@@ -6,16 +6,16 @@ WORKDIR /app
 COPY backend/package*.json ./
 
 # Install dependencies
-RUN npm install
+RUN npm ci --only=production
 
 # Copy source code
 COPY backend/ .
 
-# Build the application
-RUN npm run build
+# Create data directory
+RUN mkdir -p data
 
 # Expose port
 EXPOSE 8080
 
 # Start the application
-CMD ["node", "dist/index.js"]
+CMD ["node", "src/index.ts"]

@@ -10,13 +10,8 @@ if ! command -v git &> /dev/null; then
     exit 1
 fi
 
-if ! command -v docker &> /dev/null; then
-    echo "❌ Docker is not installed"
-    exit 1
-fi
-
-if ! command -v fly &> /dev/null; then
-    echo "❌ Fly CLI is not installed"
+if ! command -v npm &> /dev/null; then
+    echo "❌ npm is not installed"
     exit 1
 fi
 
@@ -39,10 +34,7 @@ npm install
 npm run build
 cd ..
 
-# Deploy frontend to Cloudflare Pages
-echo "☁️  Deploying frontend to Cloudflare Pages..."
-# This would normally use wrangler to deploy
-# wrangler publish
+# Deploy frontend to Cloudflare Pages would happen via GitHub Actions
 
 # Build backend
 echo "🏗️  Building backend..."
@@ -57,6 +49,6 @@ fly deploy
 
 echo "✅ Deployment completed!"
 echo ""
-echo "Frontend URL: https://jobdone-frontend.pages.dev"
+echo "Frontend will be deployed via GitHub Actions"
 echo "Backend URL: https://jobdone-api.fly.dev"
 echo "Health Check: https://jobdone-api.fly.dev/health"
