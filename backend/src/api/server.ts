@@ -3,6 +3,7 @@ import cors from 'cors';
 import { searchService } from '../services/searchService';
 import { analyticsService } from '../services/analyticsService';
 import matchRoutes from './routes/match';
+import resumeImproveRoutes from './routes/resumeImprove';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -114,6 +115,9 @@ app.post('/admin/cache/clear', (req, res) => {
 
 // Resume matching endpoint
 app.use('/match', matchRoutes);
+
+// Resume improvement endpoint
+app.use('/resume-improve', resumeImproveRoutes);
 
 // Start server
 app.listen(PORT, () => {

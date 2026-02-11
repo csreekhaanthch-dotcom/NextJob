@@ -1,4 +1,4 @@
-import pdf from 'pdf-parse';
+import pdfParse from 'pdf-parse';
 import mammoth from 'mammoth';
 
 class ResumeParser {
@@ -24,7 +24,7 @@ class ResumeParser {
    */
   private async parsePdf(buffer: Buffer): Promise<string> {
     try {
-      const data = await pdf(buffer);
+      const data = await pdfParse(buffer);
       return data.text;
     } catch (error) {
       throw new Error(`Failed to parse PDF: ${error}`);

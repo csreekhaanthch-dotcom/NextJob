@@ -19,6 +19,7 @@ Ultra-high-performance job board aggregator backend with Elasticsearch-style sea
 - **Background Scraping**: Never blocks search operations
 - **Scalable Design**: Roadmap to 1M+ jobs with partitioning strategy
 - **No Paid Dependencies**: 100% open-source stack
+- **Resume Improvement Engine**: Deterministic NLP analysis for resume optimization
 
 ## Performance Optimizations
 
@@ -52,19 +53,6 @@ Ultra-high-performance job board aggregator backend with Elasticsearch-style sea
 - CDN-ready API endpoints
 - Advanced caching strategies
 
-## Deployment
-
-```bash
-# Install dependencies
-npm install
-
-# Build
-npm run build
-
-# Start server
-npm start
-```
-
 ## API Endpoints
 
 ### Search
@@ -78,6 +66,52 @@ GET /stats/trending
 GET /stats/remote-ratio
 GET /stats/top-companies
 GET /stats/location-growth
+```
+
+### Resume Matching
+```
+POST /match
+POST /match/text
+```
+
+### Resume Improvement
+```
+POST /resume-improve
+```
+
+Parameters:
+- `resume` (multipart/form-data): Resume file (PDF, DOCX, TXT)
+- `resume_text` (form-data): Plain text resume
+
+Response:
+```json
+{
+  "score": 85,
+  "strengths": [
+    "Strong use of quantifiable metrics",
+    "Demonstrated leadership experience"
+  ],
+  "improvements": [
+    "Contains 3 weak phrases that reduce impact"
+  ],
+  "missing_skills": [
+    "kubernetes",
+    "docker",
+    "aws"
+  ],
+  "keyword_opportunities": [
+    "cloud",
+    "scalability",
+    "performance"
+  ],
+  "suggested_rewrites": [
+    {
+      "original": "responsible for maintaining servers",
+      "suggestion": "Maintained cloud infrastructure resulting in 99.9% uptime",
+      "reason": "Replace weak phrase \"responsible for\" with stronger action verb"
+    }
+  ]
+}
 ```
 
 ### Admin

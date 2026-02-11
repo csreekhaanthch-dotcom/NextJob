@@ -1,13 +1,13 @@
 import { dbManager } from '../database/connection';
 import { SearchParams, SearchResult, Job } from '../core/types';
-import LRU from 'lru-cache';
+import { LRUCache } from 'lru-cache';
 
 class SearchService {
-  private cache: LRU<string, SearchResult>;
+  private cache: LRUCache<string, SearchResult>;
 
   constructor() {
     // Initialize LRU cache with 1000 entries, 5 minute TTL
-    this.cache = new LRU<string, SearchResult>({
+    this.cache = new LRUCache<string, SearchResult>({
       max: 1000,
       ttl: 1000 * 60 * 5 // 5 minutes
     });

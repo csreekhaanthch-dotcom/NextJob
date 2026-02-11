@@ -8,28 +8,35 @@ class SkillExtractor {
     // Frameworks & Libraries
     'react', 'angular', 'vue', 'node', 'express', 'django', 'flask', 'spring', 'laravel',
     'ruby on rails', 'next.js', 'nuxt.js', 'gatsby', 'jquery', 'bootstrap', 'tailwind',
+    'vue.js', 'angularjs', 'svelte', 'ember.js',
     
     // Databases
     'mysql', 'postgresql', 'mongodb', 'redis', 'elasticsearch', 'firebase', 'sqlite',
-    'oracle', 'mssql', 'cassandra', 'dynamodb', 'neo4j',
+    'oracle', 'mssql', 'cassandra', 'dynamodb', 'neo4j', 'couchdb', 'amazon redshift',
     
     // Cloud & DevOps
     'aws', 'azure', 'gcp', 'docker', 'kubernetes', 'jenkins', 'terraform', 'ansible',
-    'git', 'github', 'gitlab', 'bitbucket', 'ci/cd', 'nginx', 'apache',
+    'git', 'github', 'gitlab', 'bitbucket', 'ci/cd', 'nginx', 'apache', 'heroku',
+    'digitalocean', 'cloudflare', 'jenkins', 'circleci', 'travis ci',
     
     // Data Science & ML
     'pandas', 'numpy', 'scikit-learn', 'tensorflow', 'pytorch', 'keras', 'matplotlib',
-    'seaborn', 'tableau', 'power bi', 'spark', 'hadoop', 'airflow',
+    'seaborn', 'tableau', 'power bi', 'spark', 'hadoop', 'airflow', 'databricks',
+    'jupyter', 'r studio', 'sas', 'spss',
     
     // Mobile Development
-    'react native', 'flutter', 'swiftui', 'android', 'ios', 'xamarin',
+    'react native', 'flutter', 'swiftui', 'android', 'ios', 'xamarin', 'ionic',
+    'cordova', 'phonegap', 'native android', 'native ios',
     
     // Testing
-    'jest', 'mocha', 'chai', 'cypress', 'selenium', 'junit', 'pytest',
+    'jest', 'mocha', 'chai', 'cypress', 'selenium', 'junit', 'pytest', 'karma',
+    'jasmine', 'enzyme', 'puppeteer', 'playwright',
     
     // Other Technical Skills
     'graphql', 'rest', 'api', 'microservices', 'serverless', 'websocket', 'webassembly',
-    'blockchain', 'cryptocurrency', 'ai', 'machine learning', 'deep learning', 'nlp'
+    'blockchain', 'cryptocurrency', 'ai', 'machine learning', 'deep learning', 'nlp',
+    'computer vision', 'cybersecurity', 'penetration testing', 'encryption',
+    'agile', 'scrum', 'kanban', 'waterfall', 'jira', 'confluence', 'trello'
   ]);
 
   // Soft skills
@@ -37,7 +44,9 @@ class SkillExtractor {
     'leadership', 'communication', 'teamwork', 'problem solving', 'critical thinking',
     'creativity', 'adaptability', 'time management', 'project management', 'negotiation',
     'conflict resolution', 'emotional intelligence', 'decision making', 'analytical skills',
-    'interpersonal skills', 'customer service', 'sales', 'marketing', 'strategic planning'
+    'interpersonal skills', 'customer service', 'sales', 'marketing', 'strategic planning',
+    'collaboration', 'mentorship', 'coaching', 'public speaking', 'presentation',
+    'research', 'documentation', 'training', 'facilitation'
   ]);
 
   /**
