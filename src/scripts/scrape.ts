@@ -25,6 +25,19 @@ db.exec(`
   )
 `);
 
+// Define job interface
+interface Job {
+  title: string;
+  company: string;
+  location: string;
+  salary: string;
+  type: string;
+  description: string;
+  url: string;
+  source: string;
+  posted_date: string;
+}
+
 // Sample job sources (public job boards)
 const jobSources = [
   {
@@ -35,13 +48,13 @@ const jobSources = [
   // Add more sources here
 ];
 
-async function scrapeYCJobs() {
+async function scrapeYCJobs(): Promise<Job[]> {
   console.log('Scraping YC Jobs...');
   
   try {
     const response = await axios.get('https://www.ycombinator.com/jobs');
     const $ = cheerio.load(response.data);
-    const jobs = [];
+    const jobs: Job[] = [];
     
     $('.job-listings .job-row').each((index, element) => {
       const title = $(element).find('.job-title').text().trim();
@@ -107,8 +120,8 @@ async function scrapeAllSources() {
   }
   
   // Show total jobs in database
-  const count = db.prepare('SELECT COUNT(*) as total FROM jobs').get();
-  console.log(`Total jobs in database: ${count.total}`);
+  const countRow = db.prepare('SELECT COUNT(*) as total FROM jobs').get() as { total: number };
+  console.log(`Total jobs in database: ${countRow.total}`);
   
   db.close();
   console.log('Scraping completed!');
