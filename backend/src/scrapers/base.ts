@@ -84,7 +84,7 @@ export abstract class BaseScraper {
       description: job.description?.trim() || '',
       salary: job.salary?.trim() || '',
       tags: job.tags || []
-    };
+    } as Job;
   }
 
   /**
