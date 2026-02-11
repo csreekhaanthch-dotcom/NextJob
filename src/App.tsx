@@ -7,7 +7,10 @@ import Footer from './components/Footer';
 
 const App: React.FC = () => {
   return (
-    <Router>
+    <Router future={{
+      v7_startTransition: true,
+      v7_relativeSplatPath: true
+    }}>
       <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
         <Header />
         <main className="flex-grow">
