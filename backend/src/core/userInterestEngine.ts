@@ -1,6 +1,6 @@
 import { dbManager } from '../database/connection';
 import { tokenizer } from './tokenizer';
-import { LRUCache } from 'lru-cache';
+import { cacheService } from '../services/cacheService';
 
 interface UserBehavior {
   job_id: string;
@@ -16,18 +16,18 @@ interface InterestVector {
 }
 
 class UserInterestEngine {
-  private behaviorCache: LRUCache<string, UserBehavior[]>;
-  private interestCache: LRUCache<string, InterestVector>;
+  private behaviorCache;
+  private interestCache;
 
   constructor() {
-    // Cache user behaviors and interest vectors
-    this.behaviorCache = new LRUCache<string, UserBehavior[]>({
-      max: 10000,
+    // Initialize caches
+    this.behaviorCache = cacheService.createCache('user-behavior', { 
+      maxSize: 10000, 
       ttl: 1000 * 60 * 5 // 5 minutes
     });
     
-    this.interestCache = new LRUCache<string, InterestVector>({
-      max: 10000,
+    this.interestCache = cacheService.createCache('user-interest', { 
+      maxSize: 10000, 
       ttl: 1000 * 60 * 10 // 10 minutes
     });
   }
@@ -40,11 +40,10 @@ class UserInterestEngine {
     
     // Insert or update interaction record
     const stmt = db.prepare(`
-      INSERT INTO user_interactions (user_id, job_id, interaction_type, timestamp)
+      INSERT INTO user_behavior (user_id, job_id, action_type, timestamp)
       VALUES (?, ?, ?, strftime('%s', 'now'))
-      ON CONFLICT(user_id, job_id, interaction_type) DO UPDATE SET
-        timestamp = strftime('%s', 'now'),
-        count = count + 1
+      ON CONFLICT(user_id, job_id, action_type) DO UPDATE SET
+        timestamp = strftime('%s', 'now')
     `);
     
     stmt.run(userId, jobId, interactionType);
@@ -109,12 +108,12 @@ class UserInterestEngine {
     const stmt = db.prepare(`
       SELECT 
         job_id,
-        SUM(CASE WHEN interaction_type = 'view' THEN count ELSE 0 END) as view_count,
-        SUM(CASE WHEN interaction_type = 'click' THEN count ELSE 0 END) as click_count,
-        SUM(CASE WHEN interaction_type = 'save' THEN count ELSE 0 END) as save_count,
-        SUM(CASE WHEN interaction_type = 'apply' THEN count ELSE 0 END) as apply_count,
+        SUM(CASE WHEN action_type = 'view' THEN 1 ELSE 0 END) as view_count,
+        SUM(CASE WHEN action_type = 'click' THEN 1 ELSE 0 END) as click_count,
+        SUM(CASE WHEN action_type = 'save' THEN 1 ELSE 0 END) as save_count,
+        SUM(CASE WHEN action_type = 'apply' THEN 1 ELSE 0 END) as apply_count,
         MAX(timestamp) as last_interaction
-      FROM user_interactions
+      FROM user_behavior
       WHERE user_id = ?
       GROUP BY job_id
     `);

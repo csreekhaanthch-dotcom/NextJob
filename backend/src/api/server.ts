@@ -1,17 +1,59 @@
 import express from 'express';
 import cors from 'cors';
+import rateLimit from 'express-rate-limit';
+import helmet from 'helmet';
 import { searchService } from '../services/searchService';
 import { analyticsService } from '../services/analyticsService';
 import matchRoutes from './routes/match';
 import resumeImproveRoutes from './routes/resumeImprove';
 import personalizationRoutes from './routes/personalization';
 import recruiterRoutes from './routes/recruiter';
+import resumeUploadRoutes from './routes/resumeUpload';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Middleware
-app.use(cors());
+// Rate limiting configuration
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: 'Too many requests from this IP, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Strict rate limiting for sensitive endpoints
+const strictLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // limit each IP to 5 requests per windowMs
+  message: 'Too many requests from this IP, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: false,
+});
+
+// Resume upload rate limiting
+const resumeUploadLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 3, // limit each IP to 3 resume uploads per hour
+  message: 'Too many resume uploads. Please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Security middleware
+app.use(helmet());
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'User-ID'],
+  credentials: true
+}));
+
+// Rate limiting
+app.use(limiter);
+
+// Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -19,6 +61,12 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
+// Apply strict rate limiting to auth endpoints
+app.use('/auth', strictLimiter);
+
+// Apply resume upload rate limiting
+app.use('/resume/upload', resumeUploadLimiter);
 
 // Search endpoint
 app.get('/jobs', async (req, res) => {
@@ -126,6 +174,22 @@ app.use('/personalization', personalizationRoutes);
 
 // Recruiter endpoints
 app.use('/recruiter', recruiterRoutes);
+
+// Resume upload endpoint
+app.use('/resume/upload', resumeUploadRoutes);
+
+// Error handling middleware
+app.use((err: any, req: any, res: any, next: any) => {
+  // Log error for debugging (in production, use a proper logging solution)
+  console.error('Error occurred:', err);
+  
+  // Don't expose internal error details to client
+  if (process.env.NODE_ENV === 'production') {
+    res.status(500).json({ error: 'Internal server error' });
+  } else {
+    res.status(500).json({ error: err.message || 'Internal server error' });
+  }
+});
 
 // Start server
 app.listen(PORT, () => {

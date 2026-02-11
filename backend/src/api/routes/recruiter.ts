@@ -1,13 +1,16 @@
 import express from 'express';
 import { recruiterMatchingService } from '../../services/recruiterMatchingService';
+import { recruiterDashboardService } from '../../services/recruiterDashboardService';
+import { requireRecruiter, AuthRequest } from '../../middleware/auth';
+import { dbManager } from '../../database/connection';
 
 const router = express.Router();
 
 /**
  * POST /match-candidates
- * Match job description to candidates
+ * Match job description to candidates (recruiter only)
  */
-router.post('/match-candidates', async (req, res) => {
+router.post('/match-candidates', requireRecruiter, async (req: AuthRequest, res) => {
   try {
     const { jobId, jobDescription, jobTitle, jobLocation, limit } = req.body;
     
@@ -22,10 +25,10 @@ router.post('/match-candidates', async (req, res) => {
     
     // Match job to candidates
     const matches = await recruiterMatchingService.matchJobToCandidates(
-      jobId as string,
-      jobDescription as string,
-      jobTitle as string,
-      jobLocation as string,
+      jobId,
+      jobDescription,
+      jobTitle,
+      jobLocation,
       limit ? parseInt(limit as string, 10) : undefined
     );
     
@@ -44,32 +47,40 @@ router.post('/match-candidates', async (req, res) => {
 });
 
 /**
- * GET /candidate/:userId
- * Get detailed candidate information
+ * GET /dashboard
+ * Get recruiter dashboard data (recruiter only)
  */
-router.get('/candidate/:userId', async (req, res) => {
+router.get('/dashboard', requireRecruiter, async (req: AuthRequest, res) => {
   try {
-    const { userId } = req.params;
+    if (!req.user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
     
-    // In a real implementation, this would fetch detailed candidate info
-    // For now, we'll return a placeholder response
+    // Get recruiter ID from user ID
+    const db = dbManager.getDB();
+    const recruiterStmt = db.prepare('SELECT id FROM recruiters WHERE user_id = ?');
+    const recruiterResult = recruiterStmt.get(req.user.id) as { id: string } | undefined;
+    
+    if (!recruiterResult) {
+      return res.status(403).json({ error: 'Not registered as recruiter' });
+    }
+    
+    const startTime = Date.now();
+    
+    // Get dashboard data
+    const dashboardData = await recruiterDashboardService.getDashboardData(recruiterResult.id);
+    
+    const duration = Date.now() - startTime;
     
     res.status(200).json({
-      user_id: userId,
-      name: "John Doe",
-      email: "john.doe@example.com",
-      phone: "+1 (555) 123-4567",
-      location: "San Francisco, CA",
-      current_company: "Tech Corp",
-      current_title: "Senior Software Engineer",
-      experience_years: 5,
-      education: "B.S. Computer Science, Stanford University",
-      skills: ["JavaScript", "React", "Node.js", "AWS", "Docker"],
-      resume_url: "/resumes/john-doe.pdf"
+      ...dashboardData,
+      performance: {
+        duration_ms: duration
+      }
     });
   } catch (error) {
-    console.error('Candidate info error:', error);
-    res.status(500).json({ error: 'Internal server error retrieving candidate info' });
+    console.error('Dashboard data error:', error);
+    res.status(500).json({ error: 'Internal server error retrieving dashboard data' });
   }
 });
 

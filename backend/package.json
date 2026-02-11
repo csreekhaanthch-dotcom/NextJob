@@ -7,20 +7,21 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
-    "test": "jest",
-    "worker:scraper": "node dist/workers/scraperWorker.js",
-    "worker:analytics": "node dist/workers/analyticsWorker.js"
+    "test": "jest"
   },
   "dependencies": {
     "express": "^4.18.2",
     "cors": "^2.8.5",
+    "helmet": "^7.0.0",
+    "express-rate-limit": "^6.7.0",
     "axios": "^1.4.0",
     "cheerio": "^1.0.0-rc.12",
     "better-sqlite3": "^8.5.0",
     "lru-cache": "^10.0.0",
     "pdf-parse": "^1.1.1",
     "mammoth": "^1.6.0",
-    "multer": "^1.4.5-lts.1"
+    "multer": "^1.4.5-lts.1",
+    "@supabase/supabase-js": "^2.39.0"
   },
   "devDependencies": {
     "@types/node": "^20.4.0",
@@ -30,6 +31,8 @@
     "@types/pdf-parse": "^1.1.4",
     "@types/mammoth": "^1.4.4",
     "@types/multer": "^1.4.7",
+    "@types/helmet": "^4.0.0",
+    "@types/express-rate-limit": "^6.0.0",
     "typescript": "^5.1.6",
     "ts-node": "^10.9.1"
   },
