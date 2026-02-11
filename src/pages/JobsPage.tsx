@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Search, MapPin, Building, Calendar, Filter } from 'lucide-react';
 import JobCard from '@/components/JobCard';
 import JobFilters from '@/components/JobFilters';
@@ -84,16 +84,28 @@ const JobsPage: React.FC = () => {
   const [locationFilter, setLocationFilter] = useState('');
   const [jobTypeFilter, setJobTypeFilter] = useState('');
   const [filteredJobs, setFilteredJobs] = useState(mockJobs);
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+
+  // Debounce search term
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 300);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [searchTerm]);
 
   useEffect(() => {
     // In a real app, this would fetch from an API
     let results = mockJobs;
     
-    if (searchTerm) {
+    if (debouncedSearchTerm) {
       results = results.filter(job => 
-        job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        job.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        job.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
+        job.title.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+        job.company.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+        job.tags.some(tag => tag.toLowerCase().includes(debouncedSearchTerm.toLowerCase()))
       );
     }
     
@@ -110,7 +122,7 @@ const JobsPage: React.FC = () => {
     }
     
     setFilteredJobs(results);
-  }, [searchTerm, locationFilter, jobTypeFilter]);
+  }, [debouncedSearchTerm, locationFilter, jobTypeFilter]);
 
   return (
     <div className="container mx-auto px-4 py-8">

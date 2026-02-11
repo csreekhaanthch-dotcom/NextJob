@@ -55,12 +55,12 @@ router.post('/', upload.single('resume'), async (req, res) => {
     const db = dbManager.getDB();
     const stmt = db.prepare(`
       INSERT INTO resumes (user_id, file_path, file_size, file_type, uploaded_at)
-      VALUES (?, ?, ?, ?, NOW())
+      VALUES (?, ?, ?, ?, datetime('now'))
       ON CONFLICT (user_id) DO UPDATE SET
         file_path = EXCLUDED.file_path,
         file_size = EXCLUDED.file_size,
         file_type = EXCLUDED.file_type,
-        uploaded_at = NOW()
+        uploaded_at = datetime('now')
     `);
 
     stmt.run(

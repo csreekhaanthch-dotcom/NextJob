@@ -147,3 +147,5 @@ FOR ALL USING (recruiter_id IN (SELECT id FROM recruiters WHERE user_id = auth.u
 CREATE INDEX IF NOT EXISTS idx_jobs_ranking ON jobs(ranking_score DESC, posted_date DESC);
 CREATE INDEX IF NOT EXISTS idx_jobs_location ON jobs(location_normalized);
 CREATE INDEX IF NOT EXISTS idx_jobs_remote ON jobs(remote);
+CREATE INDEX IF NOT EXISTS idx_jobs_company ON jobs(company_id);
+CREATE INDEX IF NOT EXISTS idx_jobs_location_remote ON jobs(location_normalized, remote);

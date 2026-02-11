@@ -1,5 +1,4 @@
 import { createClient } from '@supabase/supabase-js';
-import { Readable } from 'stream';
 
 // Initialize Supabase client
 const supabaseUrl = process.env.SUPABASE_URL || '';
@@ -72,7 +71,7 @@ class StorageService {
   async downloadResume(filePath: string): Promise<Buffer> {
     const { data, error } = await supabase.storage
       .from(this.bucketName)
-      .download({ path: filePath });
+      .download(filePath); // Fixed: pass filePath directly instead of { path: filePath }
 
     if (error) {
       throw new Error(`Failed to download file: ${error.message}`);
