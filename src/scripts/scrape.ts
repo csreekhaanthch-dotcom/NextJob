@@ -1,5 +1,5 @@
 import axios from 'axios';
-import cheerio from 'cheerio';
+import * as cheerio from 'cheerio';
 import Database from 'better-sqlite3';
 import fs from 'fs';
 import path from 'path';
