@@ -1,0 +1,25 @@
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import HomePage from './pages/HomePage';
+import JobsPage from './pages/JobsPage';
+import Header from './components/Header';
+import Footer from './components/Footer';
+
+const App: React.FC = () => {
+  return (
+    <Router>
+      <div className="min-h-screen flex flex-col bg-gray-50">
+        <Header />
+        <main className="flex-grow">
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/jobs" element={<JobsPage />} />
+          </Routes>
+        </main>
+        <Footer />
+      </div>
+    </Router>
+  );
+};
+
+export default App;
