@@ -1,6 +1,7 @@
 import app from './api/server';
 import { scraperWorker } from './workers/scraperWorker';
 import { analyticsWorker } from './workers/analyticsWorker';
+import { monitoringWorker } from './workers/monitoringWorker';
 import { dbManager } from './database/connection';
 import fs from 'fs';
 import path from 'path';
@@ -24,6 +25,7 @@ async function initializeSystem() {
   // Start workers
   await scraperWorker.start();
   await analyticsWorker.start();
+  await monitoringWorker.start();
   
   console.log('Workers started');
   
@@ -43,6 +45,7 @@ async function shutdown() {
   try {
     await scraperWorker.stop();
     await analyticsWorker.stop();
+    await monitoringWorker.stop();
     dbManager.close();
     console.log('Shutdown completed');
     process.exit(0);

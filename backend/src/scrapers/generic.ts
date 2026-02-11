@@ -1,7 +1,8 @@
 import { BaseScraper } from './base';
 import axios from 'axios';
 import { Job } from '../core/types';
-import cheerio from 'cheerio';
+import * as cheerio from 'cheerio';
+import { CheerioAPI, Element } from 'cheerio';
 
 export class GenericScraper extends BaseScraper {
   constructor(baseUrl: string) {
@@ -73,8 +74,8 @@ export class GenericScraper extends BaseScraper {
             title: title,
             company: this.extractCompanyName(),
             company_domain: this.extractDomain(this.extractCompanyName()),
-            location: this.extractLocation($element, $),
-            remote: this.isRemote($element, $),
+            location: this.extractLocation($element as any, $),
+            remote: this.isRemote($element as any, $),
             posted_date: Date.now(),
             job_url: url,
             source: 'generic'
@@ -104,7 +105,7 @@ export class GenericScraper extends BaseScraper {
     }
   }
 
-  private extractLocation($element: cheerio.Cheerio, $: cheerio.Root): string {
+  private extractLocation($element: any, $: CheerioAPI): string {
     // Look for location information
     const locationSelectors = [
       '.location', '[class*="location"]', '.job-location',
@@ -112,7 +113,7 @@ export class GenericScraper extends BaseScraper {
     ];
     
     for (const selector of locationSelectors) {
-      const locationElement = $element.find(selector).first();
+      const locationElement = $element.find ? $element.find(selector).first() : $(selector).first();
       if (locationElement.length > 0) {
         const text = locationElement.text().trim();
         if (text && text.length > 0) {
@@ -124,7 +125,7 @@ export class GenericScraper extends BaseScraper {
     return 'Remote';
   }
 
-  private isRemote($element: cheerio.Cheerio, $: cheerio.Root): boolean {
+  private isRemote($element: any, $: CheerioAPI): boolean {
     const location = this.extractLocation($element, $);
     return location.toLowerCase().includes('remote') || 
            location.toLowerCase().includes('anywhere') ||

@@ -9,6 +9,7 @@ import resumeImproveRoutes from './routes/resumeImprove';
 import personalizationRoutes from './routes/personalization';
 import recruiterRoutes from './routes/recruiter';
 import resumeUploadRoutes from './routes/resumeUpload';
+import healthCheckRoutes from '../monitoring/healthCheck';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -57,16 +58,8 @@ app.use(limiter);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
-});
-
-// Apply strict rate limiting to auth endpoints
-app.use('/auth', strictLimiter);
-
-// Apply resume upload rate limiting
-app.use('/resume/upload', resumeUploadLimiter);
+// Health check endpoints
+app.use('/health', healthCheckRoutes);
 
 // Search endpoint
 app.get('/jobs', async (req, res) => {

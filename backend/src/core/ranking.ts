@@ -23,7 +23,7 @@ class RankingEngine {
    * Calculate company activity score based on number of active jobs
    * company_activity_score = log(number_of_active_jobs + 1)
    */
-  calculateCompanyActivityScore(companyDomain: string): Promise<number> {
+  async calculateCompanyActivityScore(companyDomain: string): Promise<number> {
     const stmt = dbManager.prepare(`
       SELECT COUNT(*) as job_count 
       FROM jobs 
