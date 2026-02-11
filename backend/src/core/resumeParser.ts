@@ -7,12 +7,11 @@ class ResumeParser {
    */
   async parse(fileBuffer: Buffer, fileType: string): Promise<string> {
     switch (fileType.toLowerCase()) {
-      case 'pdf':
+      case 'application/pdf':
         return await this.parsePdf(fileBuffer);
-      case 'docx':
+      case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
         return await this.parseDocx(fileBuffer);
-      case 'txt':
-      case 'text':
+      case 'text/plain':
         return fileBuffer.toString('utf8');
       default:
         throw new Error(`Unsupported file type: ${fileType}`);
@@ -24,6 +23,7 @@ class ResumeParser {
    */
   private async parsePdf(buffer: Buffer): Promise<string> {
     try {
+      // @ts-ignore: pdfParse typing issue
       const data = await pdfParse(buffer);
       return data.text;
     } catch (error) {

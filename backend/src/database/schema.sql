@@ -1,67 +1,83 @@
--- Jobs table
+-- Jobs table (existing)
 CREATE TABLE IF NOT EXISTS jobs (
   id TEXT PRIMARY KEY,
-  title TEXT NOT NULL,
-  title_normalized TEXT NOT NULL,
-  company TEXT NOT NULL,
-  company_domain TEXT NOT NULL,
+  title TEXT,
+  title_normalized TEXT,
+  company TEXT,
+  company_domain TEXT,
   location TEXT,
   location_normalized TEXT,
-  remote INTEGER DEFAULT 0,
-  posted_date INTEGER NOT NULL,
-  ranking_score REAL DEFAULT 0.0,
-  source TEXT NOT NULL,
-  job_url TEXT UNIQUE NOT NULL,
+  remote BOOLEAN,
+  posted_date INTEGER,
+  ranking_score REAL DEFAULT 0,
+  source TEXT,
+  job_url TEXT,
   description TEXT,
   salary TEXT,
   tags TEXT,
-  created_at INTEGER DEFAULT (strftime('%s', 'now')),
-  updated_at INTEGER DEFAULT (strftime('%s', 'now'))
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- Job tokens for search indexing
+-- Job tokens for search (existing)
 CREATE TABLE IF NOT EXISTS job_tokens (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  token TEXT NOT NULL,
-  job_id TEXT NOT NULL,
-  weight REAL DEFAULT 1.0,
+  token TEXT,
+  job_id TEXT,
+  weight REAL,
   FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE
 );
 
--- Analytics tables
+-- Users table
+CREATE TABLE IF NOT EXISTS users (
+  id TEXT PRIMARY KEY,
+  name TEXT,
+  email TEXT UNIQUE,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- User profiles
+CREATE TABLE IF NOT EXISTS user_profiles (
+  user_id TEXT PRIMARY KEY,
+  preferred_location TEXT,
+  experience_level TEXT,
+  remote_preference BOOLEAN,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- User resumes
+CREATE TABLE IF NOT EXISTS user_resumes (
+  user_id TEXT PRIMARY KEY,
+  resume_text TEXT,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- User interactions tracking
+CREATE TABLE IF NOT EXISTS user_interactions (
+  user_id TEXT,
+  job_id TEXT,
+  interaction_type TEXT, -- view, click, save, apply
+  count INTEGER DEFAULT 1,
+  timestamp INTEGER,
+  PRIMARY KEY (user_id, job_id, interaction_type),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE
+);
+
+-- Daily stats for analytics (existing)
 CREATE TABLE IF NOT EXISTS daily_stats (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  date TEXT NOT NULL,
-  token TEXT NOT NULL,
-  job_count INTEGER DEFAULT 0
-);
-
-CREATE TABLE IF NOT EXISTS company_stats (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  date TEXT NOT NULL,
-  company_domain TEXT NOT NULL,
-  job_count INTEGER DEFAULT 0
-);
-
-CREATE TABLE IF NOT EXISTS location_stats (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  date TEXT NOT NULL,
-  location TEXT NOT NULL,
-  job_count INTEGER DEFAULT 0
+  date TEXT,
+  token TEXT,
+  job_count INTEGER,
+  PRIMARY KEY (date, token)
 );
 
 -- Indexes for performance
-CREATE INDEX IF NOT EXISTS idx_jobs_title_normalized ON jobs(title_normalized);
-CREATE INDEX IF NOT EXISTS idx_jobs_location_normalized ON jobs(location_normalized);
-CREATE INDEX IF NOT EXISTS idx_jobs_posted_date ON jobs(posted_date DESC);
+CREATE INDEX IF NOT EXISTS idx_jobs_ranking ON jobs(ranking_score DESC, posted_date DESC);
+CREATE INDEX IF NOT EXISTS idx_jobs_location ON jobs(location_normalized);
 CREATE INDEX IF NOT EXISTS idx_jobs_remote ON jobs(remote);
-CREATE INDEX IF NOT EXISTS idx_jobs_ranking_score ON jobs(ranking_score DESC);
-CREATE INDEX IF NOT EXISTS idx_jobs_company_domain ON jobs(company_domain);
 CREATE INDEX IF NOT EXISTS idx_job_tokens_token ON job_tokens(token);
 CREATE INDEX IF NOT EXISTS idx_job_tokens_job_id ON job_tokens(job_id);
-CREATE INDEX IF NOT EXISTS idx_daily_stats_date_token ON daily_stats(date, token);
-CREATE INDEX IF NOT EXISTS idx_company_stats_date_domain ON company_stats(date, company_domain);
-CREATE INDEX IF NOT EXISTS idx_location_stats_date_location ON location_stats(date, location);
-
--- Composite indexes for common queries
-CREATE INDEX IF NOT EXISTS idx_jobs_composite_search ON jobs(title_normalized, location_normalized, remote, ranking_score DESC);
+CREATE INDEX IF NOT EXISTS idx_user_interactions_user ON user_interactions(user_id, timestamp);
+CREATE INDEX IF NOT EXISTS idx_user_interactions_job ON user_interactions(job_id, timestamp);
+CREATE INDEX IF NOT EXISTS idx_daily_stats_date ON daily_stats(date);

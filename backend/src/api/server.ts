@@ -4,6 +4,8 @@ import { searchService } from '../services/searchService';
 import { analyticsService } from '../services/analyticsService';
 import matchRoutes from './routes/match';
 import resumeImproveRoutes from './routes/resumeImprove';
+import personalizationRoutes from './routes/personalization';
+import recruiterRoutes from './routes/recruiter';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -118,6 +120,12 @@ app.use('/match', matchRoutes);
 
 // Resume improvement endpoint
 app.use('/resume-improve', resumeImproveRoutes);
+
+// Personalization endpoints
+app.use('/personalization', personalizationRoutes);
+
+// Recruiter endpoints
+app.use('/recruiter', recruiterRoutes);
 
 // Start server
 app.listen(PORT, () => {
