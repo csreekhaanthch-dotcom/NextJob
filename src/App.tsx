@@ -8,7 +8,7 @@ import Footer from './components/Footer';
 const App: React.FC = () => {
   return (
     <Router>
-      <div className="min-h-screen flex flex-col bg-gray-50">
+      <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
         <Header />
         <main className="flex-grow">
           <Routes>

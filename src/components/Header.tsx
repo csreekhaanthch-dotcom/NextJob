@@ -1,27 +1,32 @@
 import React from 'react';
-import { Search, Briefcase, Home, List } from 'lucide-react';
+import { Search, Briefcase, Home, List. Sparkles } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
 const Header: React.FC = () => {
   const location = useLocation();
   
   return (
-    <header className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-50">
+    <header className="sticky top-0 z-50 backdrop-blur-lg bg-white/80 border-b border-white/20 shadow-sm">
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
           <Link to="/" className="flex items-center space-x-2">
-            <div className="bg-blue-600 p-2 rounded-lg">
-              <Briefcase className="h-6 w-6 text-white" />
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg blur opacity-75"></div>
+              <div className="relative bg-gradient-to-r from-blue-500 to-purple-600 p-2 rounded-lg">
+                <Briefcase className="h-6 w-6 text-white" />
+              </div>
             </div>
-            <h1 className="text-2xl font-bold text-gray-900">JobHub</h1>
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              NextJob
+            </h1>
           </Link>
           
           <nav className="hidden md:flex space-x-8">
             <Link 
               to="/" 
-              className={`flex items-center space-x-1 font-medium ${
+              className={`flex items-center space-x-1 font-medium transition-all duration-200 ${
                 location.pathname === '/' 
-                  ? 'text-blue-600' 
+                  ? 'text-blue-600 font-semibold' 
                   : 'text-gray-600 hover:text-blue-600'
               }`}
             >
@@ -30,9 +35,9 @@ const Header: React.FC = () => {
             </Link>
             <Link 
               to="/jobs" 
-              className={`flex items-center space-x-1 font-medium ${
+              className={`flex items-center space-x-1 font-medium transition-all duration-200 ${
                 location.pathname === '/jobs' 
-                  ? 'text-blue-600' 
+                  ? 'text-blue-600 font-semibold' 
                   : 'text-gray-600 hover:text-blue-600'
               }`}
             >
@@ -48,7 +53,7 @@ const Header: React.FC = () => {
             <input
               type="text"
               placeholder="Search jobs, companies..."
-              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full"
+              className="pl-10 pr-4 py-2 bg-white/50 backdrop-blur-sm border border-white/30 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full shadow-sm transition-all"
             />
           </div>
         </div>
