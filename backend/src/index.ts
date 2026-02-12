@@ -16,7 +16,11 @@ async function initializeSystem() {
   }
   
   // Initialize database
-  const schemaPath = path.join(process.cwd(), 'src', 'database', 'schema.sql');
+  let schemaPath = path.join(__dirname, 'database', 'schema.sql');
+  // Fallback for development when running from src
+  if (!fs.existsSync(schemaPath)) {
+    schemaPath = path.join(process.cwd(), 'src', 'database', 'schema.sql');
+  }
   const schema = fs.readFileSync(schemaPath, 'utf8');
   dbManager.getDB().exec(schema);
   

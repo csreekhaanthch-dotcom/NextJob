@@ -4,7 +4,7 @@
   "description": "Ultra-high-performance job board aggregator backend",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && cp -r src/database dist/",
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
     "test": "jest"
