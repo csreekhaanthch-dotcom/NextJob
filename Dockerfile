@@ -18,4 +18,4 @@ RUN mkdir -p data
 EXPOSE 8080
 
 # Start the application
-CMD ["node", "src/index.ts"]
+CMD ["node", "dist/index.js"]
