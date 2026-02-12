@@ -44,6 +44,7 @@
   "devDependencies": {
     "@dyad-sh/react-vite-component-tagger": "latest",
     "@types/better-sqlite3": "latest",
+    "@types/mammoth": "^1.4.4",
     "@types/node": "latest",
     "@types/node-cron": "latest",
     "@types/react": "latest",
