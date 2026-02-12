@@ -16,7 +16,7 @@ async function initializeSystem() {
   }
   
   // Initialize database
-  const schemaPath = path.join(__dirname, 'database', 'schema.sql');
+  const schemaPath = path.join(process.cwd(), 'src', 'database', 'schema.sql');
   const schema = fs.readFileSync(schemaPath, 'utf8');
   dbManager.getDB().exec(schema);
   
