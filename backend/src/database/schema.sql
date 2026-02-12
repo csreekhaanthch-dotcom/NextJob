@@ -23,6 +23,8 @@ CREATE TABLE IF NOT EXISTS jobs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   title TEXT NOT NULL,
   title_normalized TEXT,
+  company TEXT,
+  company_domain TEXT,
   company_id UUID REFERENCES companies(id),
   location TEXT,
   location_normalized TEXT,
@@ -148,4 +150,5 @@ CREATE INDEX IF NOT EXISTS idx_jobs_ranking ON jobs(ranking_score DESC, posted_d
 CREATE INDEX IF NOT EXISTS idx_jobs_location ON jobs(location_normalized);
 CREATE INDEX IF NOT EXISTS idx_jobs_remote ON jobs(remote);
 CREATE INDEX IF NOT EXISTS idx_jobs_company ON jobs(company_id);
+CREATE INDEX IF NOT EXISTS idx_jobs_company_name ON jobs(company);
 CREATE INDEX IF NOT EXISTS idx_jobs_location_remote ON jobs(location_normalized, remote);

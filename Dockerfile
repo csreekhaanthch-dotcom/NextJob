@@ -11,6 +11,9 @@ RUN npm ci --only=production
 # Copy source code
 COPY backend/ .
 
+# Build TypeScript
+RUN npm run build
+
 # Create data directory
 RUN mkdir -p data
 
@@ -18,4 +21,4 @@ RUN mkdir -p data
 EXPOSE 8080
 
 # Start the application
-CMD ["node", "src/index.ts"]
+CMD ["node", "dist/index.js"]

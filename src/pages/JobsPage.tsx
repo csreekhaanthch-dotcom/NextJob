@@ -3,88 +3,74 @@ import { Search, MapPin, Building, Calendar, Filter } from 'lucide-react';
 import JobCard from '@/components/JobCard';
 import JobFilters from '@/components/JobFilters';
 
-// Mock data for demonstration
-const mockJobs = [
-  {
-    id: 1,
-    title: "Senior Frontend Developer",
-    company: "TechCorp Inc.",
-    location: "San Francisco, CA",
-    salary: "$120k - $150k",
-    type: "Full-time",
-    posted: "2 days ago",
-    description: "We're looking for an experienced frontend developer to join our team...",
-    tags: ["React", "TypeScript", "Tailwind"],
-    logo: "https://placehold.co/60x60"
-  },
-  {
-    id: 2,
-    title: "Product Manager",
-    company: "StartupXYZ",
-    location: "Remote",
-    salary: "$130k - $160k",
-    type: "Full-time",
-    posted: "1 week ago",
-    description: "Join our product team to drive innovation and growth...",
-    tags: ["Product Strategy", "Analytics", "Agile"],
-    logo: "https://placehold.co/60x60"
-  },
-  {
-    id: 3,
-    title: "UX Designer",
-    company: "DesignStudio",
-    location: "New York, NY",
-    salary: "$90k - $120k",
-    type: "Full-time",
-    posted: "3 days ago",
-    description: "Create beautiful and intuitive user experiences for our products...",
-    tags: ["Figma", "Prototyping", "Research"],
-    logo: "https://placehold.co/60x60"
-  },
-  {
-    id: 4,
-    title: "Backend Engineer",
-    company: "DataSystems",
-    location: "Austin, TX",
-    salary: "$110k - $140k",
-    type: "Full-time",
-    posted: "5 days ago",
-    description: "Build scalable backend systems for our data platform...",
-    tags: ["Node.js", "Python", "AWS"],
-    logo: "https://placehold.co/60x60"
-  },
-  {
-    id: 5,
-    title: "DevOps Specialist",
-    company: "CloudTech",
-    location: "Remote",
-    salary: "$100k - $130k",
-    type: "Contract",
-    posted: "1 day ago",
-    description: "Implement and maintain our cloud infrastructure...",
-    tags: ["Kubernetes", "Docker", "CI/CD"],
-    logo: "https://placehold.co/60x60"
-  },
-  {
-    id: 6,
-    title: "Marketing Intern",
-    company: "GrowthCo",
-    location: "Los Angeles, CA",
-    salary: "$20/hr",
-    type: "Internship",
-    posted: "4 days ago",
-    description: "Support our marketing team with campaigns and analytics...",
-    tags: ["Social Media", "Content", "Analytics"],
-    logo: "https://placehold.co/60x60"
-  }
-];
+// API base URL
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
 
 const JobsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [locationFilter, setLocationFilter] = useState('');
   const [jobTypeFilter, setJobTypeFilter] = useState('');
-  const [filteredJobs, setFilteredJobs] = useState(mockJobs);
+  const [jobs, setJobs] = useState([]);
+  const [filteredJobs, setFilteredJobs] = useState([]);
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Fetch jobs from API
+  useEffect(() => {
+    const fetchJobs = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // Build query parameters
+        const params = new URLSearchParams();
+        if (debouncedSearchTerm) params.append('keyword', debouncedSearchTerm);
+        if (locationFilter) params.append('location', locationFilter);
+        if (jobTypeFilter === 'remote') params.append('remote', 'true');
+
+        const response = await fetch(`${API_BASE_URL}/jobs?${params.toString()}`);
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        // Transform API data to match our component expectations
+        const transformedJobs = data.jobs.map(job => ({
+          id: job.id,
+          title: job.title,
+          company: job.company,
+          location: job.location || (job.remote ? 'Remote' : 'Unknown'),
+          salary: job.salary || 'Not specified',
+          type: job.remote ? 'Full-time' : 'Full-time', // Default to full-time
+          posted: job.posted_date ? `${Math.floor((Date.now() - new Date(job.posted_date)) / (1000 * 60 * 60 * 24))} days ago` : 'Recently',
+          description: job.description || 'No description available',
+          tags: job.tags ? JSON.parse(job.tags) : [],
+          logo: 'https://placehold.co/60x60'
+        }));
+
+        setJobs(transformedJobs);
+        setFilteredJobs(transformedJobs);
+      } catch (err) {
+        console.error('Failed to fetch jobs:', err);
+        setError(err.message);
+        setFilteredJobs([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    // Debounce the API call
+    const timer = setTimeout(() => {
+      fetchJobs();
+    }, 300);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [debouncedSearchTerm, locationFilter, jobTypeFilter]);
 
   // Debounce search term
   useEffect(() => {
@@ -96,33 +82,6 @@ const JobsPage: React.FC = () => {
       clearTimeout(timer);
     };
   }, [searchTerm]);
-
-  useEffect(() => {
-    // In a real app, this would fetch from an API
-    let results = mockJobs;
-    
-    if (debouncedSearchTerm) {
-      results = results.filter(job => 
-        job.title.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-        job.company.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-        job.tags.some(tag => tag.toLowerCase().includes(debouncedSearchTerm.toLowerCase()))
-      );
-    }
-    
-    if (locationFilter) {
-      results = results.filter(job => 
-        job.location.toLowerCase().includes(locationFilter.toLowerCase())
-      );
-    }
-    
-    if (jobTypeFilter) {
-      results = results.filter(job => 
-        job.type.toLowerCase().includes(jobTypeFilter.toLowerCase())
-      );
-    }
-    
-    setFilteredJobs(results);
-  }, [debouncedSearchTerm, locationFilter, jobTypeFilter]);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -203,32 +162,70 @@ const JobsPage: React.FC = () => {
         </select>
       </div>
       
-      {/* Job Listings */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredJobs.map(job => (
-          <JobCard key={job.id} job={job} />
-        ))}
-      </div>
-      
-      {/* Load More */}
-      {filteredJobs.length > 0 && (
-        <div className="text-center mt-12">
-          <button className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors">
-            Load More Jobs
-          </button>
-        </div>
-      )}
-      
-      {filteredJobs.length === 0 && (
+      {/* Loading state */}
+      {loading && (
         <div className="text-center py-12">
           <div className="bg-gray-100 p-8 rounded-xl max-w-md mx-auto">
-            <Search className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">No jobs found</h3>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">Loading jobs...</h3>
             <p className="text-gray-600">
-              Try adjusting your search criteria or filters to find more opportunities
+              Fetching the latest job opportunities for you
             </p>
           </div>
         </div>
+      )}
+      
+      {/* Error state */}
+      {error && !loading && (
+        <div className="text-center py-12">
+          <div className="bg-red-50 p-8 rounded-xl max-w-md mx-auto">
+            <div className="bg-red-100 rounded-full h-12 w-12 flex items-center justify-center mx-auto mb-4">
+              <span className="text-red-600 font-bold text-xl">!</span>
+            </div>
+            <h3 className="text-xl font-semibold text-red-900 mb-2">Error loading jobs</h3>
+            <p className="text-red-600">
+              {error}
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      )}
+      
+      {/* Job Listings */}
+      {!loading && !error && (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredJobs.map(job => (
+              <JobCard key={job.id} job={job} />
+            ))}
+          </div>
+          
+          {/* Load More */}
+          {filteredJobs.length > 0 && (
+            <div className="text-center mt-12">
+              <button className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors">
+                Load More Jobs
+              </button>
+            </div>
+          )}
+          
+          {filteredJobs.length === 0 && (
+            <div className="text-center py-12">
+              <div className="bg-gray-100 p-8 rounded-xl max-w-md mx-auto">
+                <Search className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">No jobs found</h3>
+                <p className="text-gray-600">
+                  Try adjusting your search criteria or filters to find more opportunities
+                </p>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

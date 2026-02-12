@@ -10,46 +10,27 @@ import personalizationRoutes from './routes/personalization';
 import recruiterRoutes from './routes/recruiter';
 import resumeUploadRoutes from './routes/resumeUpload';
 import healthCheckRoutes from '../monitoring/healthCheck';
+import { corsOptions, limiter, strictLimiter, resumeUploadLimiter } from '../middleware/security';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Rate limiting configuration
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  message: 'Too many requests from this IP, please try again later.',
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-// Strict rate limiting for sensitive endpoints
-const strictLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // limit each IP to 5 requests per windowMs
-  message: 'Too many requests from this IP, please try again later.',
-  standardHeaders: true,
-  legacyHeaders: false,
-  skipSuccessfulRequests: false,
-});
-
-// Resume upload rate limiting
-const resumeUploadLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: 3, // limit each IP to 3 resume uploads per hour
-  message: 'Too many resume uploads. Please try again later.',
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
 // Security middleware
-app.use(helmet());
-app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'User-ID'],
-  credentials: true
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", "data:", "https://*.supabase.co"],
+      connectSrc: ["'self'", "https://*.supabase.co"],
+      objectSrc: ["'none'"],
+      upgradeInsecureRequests: []
+    }
+  }
 }));
+app.use(cors(corsOptions));
 
 // Rate limiting
 app.use(limiter);
