@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import compression from 'compression';
 import { searchService } from '../services/searchService';
 import { analyticsService } from '../services/analyticsService';
 import matchRoutes from './routes/match';
@@ -8,6 +9,7 @@ import personalizationRoutes from './routes/personalization';
 import recruiterRoutes from './routes/recruiter';
 import resumeUploadRoutes from './routes/resumeUpload';
 import healthCheckRoutes from '../monitoring/healthCheck';
+import { logger } from '../monitoring/logger';
 import { corsOptions, limiter, strictLimiter, resumeUploadLimiter, helmet } from '../middleware/security';
 
 const app = express();
@@ -25,6 +27,7 @@ app.use(helmet({
   },
 }));
 app.use(cors(corsOptions));
+app.use(compression());
 
 // Rate limiting
 app.use(limiter);
@@ -72,7 +75,7 @@ app.get('/jobs', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Search error:', error);
+    logger.error('Search error', { error });
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -84,7 +87,7 @@ app.get('/stats/trending', async (req, res) => {
     const trending = await analyticsService.getTrendingSkills(Math.min(days, 30));
     res.status(200).json(trending);
   } catch (error) {
-    console.error('Trending stats error:', error);
+    logger.error('Trending stats error', { error });
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -94,7 +97,7 @@ app.get('/stats/remote-ratio', async (req, res) => {
     const ratio = await analyticsService.getRemoteRatio();
     res.status(200).json(ratio);
   } catch (error) {
-    console.error('Remote ratio error:', error);
+    logger.error('Remote ratio error', { error });
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -105,7 +108,7 @@ app.get('/stats/top-companies', async (req, res) => {
     const companies = await analyticsService.getTopCompanies(Math.min(limit, 100));
     res.status(200).json(companies);
   } catch (error) {
-    console.error('Top companies error:', error);
+    logger.error('Top companies error', { error });
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -115,7 +118,7 @@ app.get('/stats/location-growth', async (req, res) => {
     const growth = await analyticsService.getLocationGrowth();
     res.status(200).json(growth);
   } catch (error) {
-    console.error('Location growth error:', error);
+    logger.error('Location growth error', { error });
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -126,7 +129,7 @@ app.post('/admin/cache/clear', (req, res) => {
     searchService.clearCache();
     res.status(200).json({ message: 'Cache cleared successfully' });
   } catch (error) {
-    console.error('Cache clear error:', error);
+    logger.error('Cache clear error', { error });
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -148,9 +151,8 @@ app.use('/resume/upload', resumeUploadRoutes);
 
 // Error handling middleware
 app.use((err: any, req: any, res: any, next: any) => {
-  // Log error for debugging (in production, use a proper logging solution)
-  console.error('Error occurred:', err);
-  
+  logger.error('Error occurred', { error: err });
+
   // Don't expose internal error details to client
   if (process.env.NODE_ENV === 'production') {
     res.status(500).json({ error: 'Internal server error' });
@@ -161,7 +163,7 @@ app.use((err: any, req: any, res: any, next: any) => {
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`JobDone API server running on port ${PORT}`);
+  logger.info('JobDone API server running', { port: PORT });
 });
 
 export default app;

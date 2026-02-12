@@ -1,5 +1,6 @@
 import express from 'express';
 import { dbManager } from '../database/connection';
+import { logger } from './logger';
 import os from 'os';
 
 const router = express.Router();
@@ -37,7 +38,7 @@ router.get('/', (req, res) => {
       version: process.env.npm_package_version || 'unknown'
     });
   } catch (error) {
-    console.error('Health check failed:', error);
+    logger.error('Health check failed', { error });
     res.status(503).json({
       status: 'unhealthy',
       timestamp: new Date().toISOString(),
@@ -75,7 +76,7 @@ router.get('/metrics', (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Metrics endpoint failed:', error);
+    logger.error('Metrics endpoint failed', { error });
     res.status(500).json({
       status: 'error',
       timestamp: new Date().toISOString(),
