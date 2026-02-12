@@ -33,7 +33,7 @@ const authenticate = async (req: AuthRequest, res: Response, next: NextFunction)
     next();
   } catch (error) {
     console.error('Authentication error:', error);
-    res.status(500).json({ error: 'Authentication failed' });
+    return res.status(500).json({ error: 'Authentication failed' });
   }
 };
 
@@ -58,7 +58,7 @@ const requireRecruiter = async (req: AuthRequest, res: Response, next: NextFunct
     next();
   } catch (error) {
     console.error('Recruiter authentication error:', error);
-    res.status(500).json({ error: 'Authentication failed' });
+    return res.status(500).json({ error: 'Authentication failed' });
   }
 };
 
