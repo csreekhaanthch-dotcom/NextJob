@@ -2,12 +2,17 @@ import { dbManager } from '../database/connection';
 import { Job, JobToken } from '../core/types';
 import { tokenizer } from '../core/tokenizer';
 import { rankingEngine } from '../core/ranking';
+import { jobServiceSupabase } from './jobService.supabase';
 
 class JobService {
   /**
    * Insert or update job in database
    */
   async upsertJob(job: Job): Promise<void> {
+    if (dbManager.isUsingSupabase()) {
+      return jobServiceSupabase.upsertJob(job);
+    }
+    
     const db = dbManager.getDB();
     
     // Start transaction
@@ -77,6 +82,10 @@ class JobService {
    * Delete stale jobs
    */
   async deleteStaleJobs(days: number = 30): Promise<number> {
+    if (dbManager.isUsingSupabase()) {
+      return jobServiceSupabase.deleteStaleJobs(days);
+    }
+    
     const cutoffDate = Math.floor(Date.now() / 1000) - (days * 24 * 60 * 60);
     const stmt = dbManager.prepare('DELETE FROM jobs WHERE posted_date < ?');
     const result = stmt.run(cutoffDate);
@@ -87,6 +96,10 @@ class JobService {
    * Deduplicate jobs based on title + company + location hash
    */
   async deduplicateJobs(): Promise<number> {
+    if (dbManager.isUsingSupabase()) {
+      return jobServiceSupabase.deduplicateJobs();
+    }
+    
     const db = dbManager.getDB();
     
     // Find duplicates and keep the newest one
@@ -133,6 +146,10 @@ class JobService {
    * Recalculate ranking scores for all jobs
    */
   async recalculateRankingScores(): Promise<void> {
+    if (dbManager.isUsingSupabase()) {
+      return jobServiceSupabase.recalculateRankingScores();
+    }
+    
     const db = dbManager.getDB();
     const getAllJobsStmt = db.prepare('SELECT * FROM jobs');
     const jobs = getAllJobsStmt.all() as Job[];

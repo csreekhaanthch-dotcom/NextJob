@@ -3,6 +3,7 @@ import { scraperWorker } from './workers/scraperWorker';
 import { analyticsWorker } from './workers/analyticsWorker';
 import { monitoringWorker } from './workers/monitoringWorker';
 import { dbManager } from './database/connection';
+import { supabaseManager } from './database/supabaseConnection';
 import { logger } from './monitoring/logger';
 import fs from 'fs';
 import path from 'path';
@@ -30,25 +31,39 @@ async function initializeSystem() {
   // Validate environment variables
   validateEnvironment();
 
-  // Ensure data directory exists
-  const dataDir = path.join(process.cwd(), 'data');
-  if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true });
-  }
-
-  // Initialize database
-  let schemaPath = path.join(__dirname, 'database', 'schema.sql');
-  // Fallback for development when running from src
-  if (!fs.existsSync(schemaPath)) {
-    schemaPath = path.join(process.cwd(), 'src', 'database', 'schema.sql');
-  }
-
-  if (fs.existsSync(schemaPath)) {
-    const schema = fs.readFileSync(schemaPath, 'utf8');
-    dbManager.getDB().exec(schema);
-    logger.info('Database initialized');
+  // Check if we're using Supabase or SQLite
+  const isUsingSupabase = dbManager.isUsingSupabase();
+  
+  if (isUsingSupabase) {
+    // Test Supabase connection
+    const connectionOk = await supabaseManager.testConnection();
+    if (connectionOk) {
+      logger.info('✅ Connected to Supabase');
+    } else {
+      logger.error('❌ Failed to connect to Supabase');
+      throw new Error('Supabase connection failed');
+    }
   } else {
-    logger.warn('Schema file not found, skipping database initialization');
+    // Ensure data directory exists for SQLite
+    const dataDir = path.join(process.cwd(), 'data');
+    if (!fs.existsSync(dataDir)) {
+      fs.mkdirSync(dataDir, { recursive: true });
+    }
+
+    // Initialize SQLite database
+    let schemaPath = path.join(__dirname, 'database', 'schema.sql');
+    // Fallback for development when running from src
+    if (!fs.existsSync(schemaPath)) {
+      schemaPath = path.join(process.cwd(), 'src', 'database', 'schema.sql');
+    }
+
+    if (fs.existsSync(schemaPath)) {
+      const schema = fs.readFileSync(schemaPath, 'utf8');
+      dbManager.getDB().exec(schema);
+      logger.info('Database initialized');
+    } else {
+      logger.warn('Schema file not found, skipping database initialization');
+    }
   }
 
   // Start workers
