@@ -28,17 +28,19 @@ const upload = multer({
  * POST /resume/upload
  * Upload resume file and save metadata to database
  */
-router.post('/', upload.single('resume'), async (req, res) => {
+router.post('/', upload.single('resume'), async (req, res): Promise<void> => {
   try {
     // Validate required parameters
     if (!req.file) {
-      return res.status(400).json({ error: 'Resume file is required' });
+      res.status(400).json({ error: 'Resume file is required' });
+      return;
     }
 
     // Extract user ID from request (assuming it's passed in header or JWT)
     const userId = req.headers['user-id'] as string;
     if (!userId) {
-      return res.status(400).json({ error: 'User ID is required' });
+      res.status(400).json({ error: 'User ID is required' });
+      return;
     }
 
     const startTime = Date.now();

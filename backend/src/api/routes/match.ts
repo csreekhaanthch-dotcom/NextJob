@@ -28,11 +28,12 @@ const upload = multer({
  * POST /match
  * Match resume against jobs
  */
-router.post('/', upload.single('resume'), async (req, res) => {
+router.post('/', upload.single('resume'), async (req, res): Promise<void> => {
   try {
     // Validate request
     if (!req.file) {
-      return res.status(400).json({ error: 'Resume file is required' });
+      res.status(400).json({ error: 'Resume file is required' });
+      return;
     }
 
     const startTime = Date.now();
@@ -62,13 +63,14 @@ router.post('/', upload.single('resume'), async (req, res) => {
  * POST /match/text
  * Match plain text resume against jobs
  */
-router.post('/text', async (req, res) => {
+router.post('/text', async (req, res): Promise<void> => {
   try {
     const { resume } = req.body;
     
     // Validate request
     if (!resume || typeof resume !== 'string') {
-      return res.status(400).json({ error: 'Resume text is required' });
+      res.status(400).json({ error: 'Resume text is required' });
+      return;
     }
 
     const startTime = Date.now();
