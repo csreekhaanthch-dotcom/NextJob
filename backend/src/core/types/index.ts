@@ -14,6 +14,7 @@ export interface Job {
   description?: string;
   salary?: string;
   tags?: string[];
+  ranking_score?: number;
 }
 
 // Tokenized job for search
