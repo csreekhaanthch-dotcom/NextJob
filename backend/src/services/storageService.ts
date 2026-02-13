@@ -17,7 +17,7 @@ class StorageService {
   private isConfigured: boolean;
 
   constructor() {
-    this.isConfigured = isSupabaseConfigured && supabase !== null;
+    this.isConfigured = supabase !== null;
   }
 
   private ensureConfigured(): void {
