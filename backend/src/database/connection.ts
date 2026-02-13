@@ -39,11 +39,11 @@ class DatabaseManager {
     return this.db.prepare(statement);
   }
 
-  transaction(fn: () => void): Database.Transaction {
-    return this.db.transaction(fn);
+  transaction<T>(fn: () => T): T {
+    return this.db.transaction(fn)();
   }
 
-  close() {
+  close(): void {
     this.db.close();
   }
 }
