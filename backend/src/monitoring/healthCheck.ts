@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import { dbManager } from '../database/connection';
 import { logger } from './logger';
 import os from 'os';
@@ -9,19 +9,19 @@ const router = express.Router();
  * GET /health
  * Health check endpoint for monitoring
  */
-router.get('/', (req, res) => {
+router.get('/', (req: Request, res: Response): void => {
   try {
     // Check database connectivity
     const db = dbManager.getDB();
     const dbCheck = db.prepare('SELECT 1 as ok').get();
-    
+
     // Check system resources
     const cpuUsage = getCpuUsage();
     const memoryUsage = getMemoryUsage();
-    
+
     // Check uptime
     const uptime = process.uptime();
-    
+
     res.status(200).json({
       status: 'healthy',
       timestamp: new Date().toISOString(),
@@ -48,14 +48,14 @@ router.get('/', (req, res) => {
 });
 
 /**
-   * GET /health/metrics
-   * Detailed metrics endpoint
-   */
-router.get('/metrics', (req, res) => {
+ * GET /health/metrics
+ * Detailed metrics endpoint
+ */
+router.get('/metrics', (req: Request, res: Response): void => {
   try {
     // In a real implementation, this would return detailed metrics
     // from the metrics collector
-    
+
     res.status(200).json({
       status: 'success',
       timestamp: new Date().toISOString(),
@@ -92,14 +92,14 @@ function getCpuUsage(): number {
   const cpus = os.cpus();
   let totalIdle = 0;
   let totalTick = 0;
-  
+
   for (const cpu of cpus) {
     for (const type in cpu.times) {
       totalTick += (cpu.times as any)[type];
     }
     totalIdle += cpu.times.idle;
   }
-  
+
   return parseFloat(((1 - totalIdle / totalTick) * 100).toFixed(2));
 }
 
@@ -110,7 +110,7 @@ function getMemoryUsage(): number {
   const totalMem = os.totalmem();
   const freeMem = os.freemem();
   const usedMem = totalMem - freeMem;
-  
+
   return parseFloat(((usedMem / totalMem) * 100).toFixed(2));
 }
 
@@ -121,7 +121,7 @@ function formatUptime(seconds: number): string {
   const days = Math.floor(seconds / (3600 * 24));
   const hours = Math.floor((seconds % (3600 * 24)) / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
-  
+
   return `${days}d ${hours}h ${minutes}m`;
 }
 

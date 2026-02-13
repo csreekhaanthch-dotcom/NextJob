@@ -1,7 +1,7 @@
 import { BaseScraper } from './base';
 import axios from 'axios';
 import { Job } from '../core/types';
-import cheerio from 'cheerio';
+import * as cheerio from 'cheerio';
 
 export class GreenhouseScraper extends BaseScraper {
   constructor(baseUrl: string) {
