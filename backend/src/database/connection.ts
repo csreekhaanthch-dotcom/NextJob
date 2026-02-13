@@ -22,15 +22,15 @@ class DatabaseManager {
     this.db.pragma('temp_store = MEMORY');
   }
 
-  getDB() {
+  getDB(): Database.Database {
     return this.db;
   }
 
-  prepare(statement: string) {
+  prepare(statement: string): Database.Statement {
     return this.db.prepare(statement);
   }
 
-  transaction(fn: () => void) {
+  transaction(fn: () => void): Database.Transaction {
     return this.db.transaction(fn);
   }
 
