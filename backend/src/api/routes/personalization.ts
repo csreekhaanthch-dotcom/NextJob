@@ -100,12 +100,12 @@ router.post('/interaction', async (req, res): Promise<void> => {
  * GET /user-interests/:userId
  * Get user's interest vector
  */
-router.get('/user-interests/:userId', async (req, res) => {
+router.get('/user-interests/:userId', async (req, res): Promise<void> => {
   try {
     const { userId } = req.params;
-    
+
     const startTime = Date.now();
-    
+
     // Get user's resume text if available
     let resumeText: string | undefined;
     try {
@@ -114,12 +114,12 @@ router.get('/user-interests/:userId', async (req, res) => {
       // Continue without resume if not available
       console.warn(`Could not retrieve resume for user ${userId}:`, error);
     }
-    
+
     // Build interest vector
     const interestVector = await userInterestEngine.buildInterestVector(userId, resumeText);
-    
+
     const duration = Date.now() - startTime;
-    
+
     res.status(200).json({
       interest_vector: interestVector,
       performance: {
@@ -129,6 +129,7 @@ router.get('/user-interests/:userId', async (req, res) => {
   } catch (error) {
     console.error('User interests error:', error);
     res.status(500).json({ error: 'Internal server error during interest calculation' });
+    return;
   }
 });
 
