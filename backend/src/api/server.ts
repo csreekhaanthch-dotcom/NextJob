@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import cors from 'cors';
 import compression from 'compression';
 import { searchService } from '../services/searchService';
@@ -10,7 +10,7 @@ import recruiterRoutes from './routes/recruiter';
 import resumeUploadRoutes from './routes/resumeUpload';
 import healthCheckRoutes from '../monitoring/healthCheck';
 import { logger } from '../monitoring/logger';
-import { corsOptions, limiter, strictLimiter, resumeUploadLimiter, helmet } from '../middleware/security';
+import { corsOptions, limiter, helmet } from '../middleware/security';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -40,7 +40,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use('/health', healthCheckRoutes);
 
 // Search endpoint
-app.get('/jobs', async (req, res) => {
+app.get('/jobs', async (req: Request, res: Response): Promise<void> => {
   try {
     const {
       keyword = '',
@@ -49,7 +49,7 @@ app.get('/jobs', async (req, res) => {
       page = '1',
       limit = '20'
     } = req.query;
-    
+
     const searchParams = {
       keyword: keyword as string,
       location: location as string,
@@ -57,15 +57,15 @@ app.get('/jobs', async (req, res) => {
       page: parseInt(page as string, 10),
       limit: Math.min(parseInt(limit as string, 10), 100) // Cap at 100
     };
-    
+
     // Validate parameters
     if (searchParams.page < 1) searchParams.page = 1;
     if (searchParams.limit < 1) searchParams.limit = 20;
-    
+
     const startTime = Date.now();
     const result = await searchService.search(searchParams);
     const duration = Date.now() - startTime;
-    
+
     // Add performance metrics to response
     res.status(200).json({
       ...result,
@@ -81,7 +81,7 @@ app.get('/jobs', async (req, res) => {
 });
 
 // Analytics endpoints
-app.get('/stats/trending', async (req, res) => {
+app.get('/stats/trending', async (req: Request, res: Response): Promise<void> => {
   try {
     const days = parseInt(req.query.days as string) || 7;
     const trending = await analyticsService.getTrendingSkills(Math.min(days, 30));
@@ -92,7 +92,7 @@ app.get('/stats/trending', async (req, res) => {
   }
 });
 
-app.get('/stats/remote-ratio', async (req, res) => {
+app.get('/stats/remote-ratio', async (req: Request, res: Response): Promise<void> => {
   try {
     const ratio = await analyticsService.getRemoteRatio();
     res.status(200).json(ratio);
@@ -102,7 +102,7 @@ app.get('/stats/remote-ratio', async (req, res) => {
   }
 });
 
-app.get('/stats/top-companies', async (req, res) => {
+app.get('/stats/top-companies', async (req: Request, res: Response): Promise<void> => {
   try {
     const limit = parseInt(req.query.limit as string) || 20;
     const companies = await analyticsService.getTopCompanies(Math.min(limit, 100));
@@ -113,7 +113,7 @@ app.get('/stats/top-companies', async (req, res) => {
   }
 });
 
-app.get('/stats/location-growth', async (req, res) => {
+app.get('/stats/location-growth', async (req: Request, res: Response): Promise<void> => {
   try {
     const growth = await analyticsService.getLocationGrowth();
     res.status(200).json(growth);
@@ -124,7 +124,7 @@ app.get('/stats/location-growth', async (req, res) => {
 });
 
 // Cache management endpoint (admin only)
-app.post('/admin/cache/clear', (req, res) => {
+app.post('/admin/cache/clear', (req: Request, res: Response): void => {
   try {
     searchService.clearCache();
     res.status(200).json({ message: 'Cache cleared successfully' });
