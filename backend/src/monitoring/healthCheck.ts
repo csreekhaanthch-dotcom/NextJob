@@ -1,5 +1,6 @@
 import express, { Request, Response } from 'express';
 import { dbManager } from '../database/connection';
+import { supabaseManager } from '../database/supabaseConnection';
 import { logger } from './logger';
 import os from 'os';
 
@@ -12,8 +13,17 @@ const router = express.Router();
 router.get('/', (req: Request, res: Response): void => {
   try {
     // Check database connectivity
-    const db = dbManager.getDB();
-    const dbCheck = db.prepare('SELECT 1 as ok').get();
+    let databaseConnected = false;
+    
+    if (dbManager.isUsingSupabase()) {
+      // Test Supabase connection
+      databaseConnected = supabaseManager.isConfigured();
+    } else {
+      // Test SQLite connection
+      const db = dbManager.getDB();
+      const dbCheck = db.prepare('SELECT 1 as ok').get();
+      databaseConnected = !!dbCheck;
+    }
 
     // Check system resources
     const cpuUsage = getCpuUsage();
@@ -33,7 +43,8 @@ router.get('/', (req: Request, res: Response): void => {
         free_memory: os.freemem()
       },
       database: {
-        connected: !!dbCheck
+        connected: databaseConnected,
+        type: dbManager.isUsingSupabase() ? 'supabase' : 'sqlite'
       },
       version: process.env.npm_package_version || 'unknown'
     });

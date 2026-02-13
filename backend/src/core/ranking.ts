@@ -1,5 +1,6 @@
 import { Job } from './types';
 import { dbManager } from '../database/connection';
+import { supabaseManager } from '../database/supabaseConnection';
 
 class RankingEngine {
   /**
@@ -24,18 +25,37 @@ class RankingEngine {
    * company_activity_score = log(number_of_active_jobs + 1)
    */
   async calculateCompanyActivityScore(companyDomain: string): Promise<number> {
-    const stmt = dbManager.prepare(`
-      SELECT COUNT(*) as job_count 
-      FROM jobs 
-      WHERE company_domain = ? 
-      AND posted_date > ?
-    `);
-    
-    // Consider jobs posted in last 90 days as active
-    const cutoffDate = Math.floor(Date.now() / 1000) - (90 * 24 * 60 * 60);
-    const result = stmt.get(companyDomain, cutoffDate) as { job_count: number };
-    
-    return Math.log(result.job_count + 1);
+    if (dbManager.isUsingSupabase()) {
+      const supabase = supabaseManager.getClient();
+      const cutoffDate = Math.floor(Date.now() / 1000) - (90 * 24 * 60 * 60);
+      
+      const { count, error } = await supabase
+        .from('jobs')
+        .select('id', { count: 'exact', head: true })
+        .eq('company_domain', companyDomain)
+        .gt('posted_date', cutoffDate);
+      
+      if (error) {
+        console.error('Error calculating company activity score:', error.message);
+        return 0;
+      }
+      
+      const jobCount = count || 0;
+      return Math.log(jobCount + 1);
+    } else {
+      const stmt = dbManager.prepare(`
+        SELECT COUNT(*) as job_count 
+        FROM jobs 
+        WHERE company_domain = ? 
+        AND posted_date > ?
+      `);
+      
+      // Consider jobs posted in last 90 days as active
+      const cutoffDate = Math.floor(Date.now() / 1000) - (90 * 24 * 60 * 60);
+      const result = stmt.get(companyDomain, cutoffDate) as { job_count: number };
+      
+      return Math.log(result.job_count + 1);
+    }
   }
 
   /**
@@ -73,13 +93,29 @@ class RankingEngine {
    * Update ranking score for a job
    */
   async updateJobRanking(jobId: string, rankingScore: number): Promise<void> {
-    const stmt = dbManager.prepare(`
-      UPDATE jobs 
-      SET ranking_score = ?, updated_at = strftime('%s', 'now')
-      WHERE id = ?
-    `);
-    
-    stmt.run(rankingScore, jobId);
+    if (dbManager.isUsingSupabase()) {
+      const supabase = supabaseManager.getClient();
+      const { error } = await supabase
+        .from('jobs')
+        .update({
+          ranking_score: rankingScore,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', jobId);
+      
+      if (error) {
+        console.error('Error updating job ranking:', error.message);
+        throw error;
+      }
+    } else {
+      const stmt = dbManager.prepare(`
+        UPDATE jobs 
+        SET ranking_score = ?, updated_at = strftime('%s', 'now')
+        WHERE id = ?
+      `);
+      
+      stmt.run(rankingScore, jobId);
+    }
   }
 }
 
