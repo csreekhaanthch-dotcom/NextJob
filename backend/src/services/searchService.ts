@@ -1,6 +1,7 @@
 import { dbManager } from '../database/connection';
 import { SearchParams, SearchResult, Job } from '../core/types';
 import { LRUCache } from 'lru-cache';
+import { searchServiceSupabase } from './searchService.supabase';
 
 class SearchService {
   private cache: LRUCache<string, SearchResult>;
@@ -17,6 +18,10 @@ class SearchService {
    * Search jobs with caching
    */
   async search(params: SearchParams): Promise<SearchResult> {
+    if (dbManager.isUsingSupabase()) {
+      return searchServiceSupabase.search(params);
+    }
+    
     // Create cache key
     const cacheKey = JSON.stringify(params);
     const cachedResult = this.cache.get(cacheKey);
