@@ -2,7 +2,7 @@ import { BaseScraper } from './base';
 import axios from 'axios';
 import { Job } from '../core/types';
 import * as cheerio from 'cheerio';
-import { CheerioAPI, Element } from 'cheerio';
+import { CheerioAPI } from 'cheerio';
 
 export class GenericScraper extends BaseScraper {
   constructor(baseUrl: string) {
