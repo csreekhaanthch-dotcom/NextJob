@@ -1,1 +1,7 @@
-node_modules/ 
+node_modules/
+dist/
+*.log
+.env
+.DS_Store
+backend/dist/
+backend/node_modules/
