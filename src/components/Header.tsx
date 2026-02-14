@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Briefcase, Home, List, Sparkles } from 'lucide-react';
+import { Search, Briefcase, Home, List } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
 const Header: React.FC = () => {
