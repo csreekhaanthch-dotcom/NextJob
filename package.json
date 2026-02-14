@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "scrape": "tsx src/scripts/scrape.ts"
+    "dev:server": "cd server && npm run dev",
+    "start": "cd server && npm start",
+    "install:server": "cd server && npm install"
   },
   "dependencies": {
     "@capacitor/android": "^7.0.0",
