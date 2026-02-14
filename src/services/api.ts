@@ -1,4 +1,4 @@
-const RAW_API_URL = import.meta.env.VITE_API_URL || '/api';
+const RAW_API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 const API_URL = RAW_API_URL.replace(/\/+$/, '');
 
 export interface Job {
@@ -71,6 +71,16 @@ class ApiService {
     return response.json();
   }
 
+  async searchJobs(params: { query: string; location?: string; page?: number }): Promise<JobsResponse> {
+    const queryParams = new URLSearchParams();
+    
+    queryParams.append('query', params.query);
+    if (params.location) queryParams.append('location', params.location);
+    if (params.page) queryParams.append('page', params.page.toString());
+
+    return this.fetch<JobsResponse>(`/api/jobs/search?${queryParams.toString()}`);
+  }
+
   async getJobs(params?: SearchParams): Promise<JobsResponse> {
     const queryParams = new URLSearchParams();
     
@@ -81,11 +91,11 @@ class ApiService {
     if (params?.limit) queryParams.append('limit', params.limit.toString());
 
     const query = queryParams.toString();
-    return this.fetch<JobsResponse>(`/jobs${query ? `?${query}` : ''}`);
+    return this.fetch<JobsResponse>(`/api/jobs${query ? `?${query}` : ''}`);
   }
 
   async getJob(id: string): Promise<Job> {
-    return this.fetch<Job>(`/jobs/${id}`);
+    return this.fetch<Job>(`/api/jobs/${id}`);
   }
 
   async uploadResume(file: File): Promise<{ matches: any[] }> {
