@@ -1,21 +1,28 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Search, MapPin, Filter } from 'lucide-react';
 import JobCard from '@/components/JobCard';
-import { api, Job, SearchParams } from '@/services/api';
+import { api, Job } from '@/services/api';
+
+interface SearchState {
+  query: string;
+  location: string;
+  page: number;
+}
 
 const JobsPage: React.FC = () => {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchParams, setSearchParams] = useState<SearchParams>({
+  const [searchState, setSearchState] = useState<SearchState>({
+    query: 'software engineer',
+    location: '',
     page: 1,
-    limit: 20,
   });
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   
   // Local state for search inputs
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState('software engineer');
   const [locationFilter, setLocationFilter] = useState('');
   const [jobTypeFilter, setJobTypeFilter] = useState('');
   const [remoteFilter, setRemoteFilter] = useState(false);
@@ -24,7 +31,11 @@ const JobsPage: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await api.getJobs(searchParams);
+      const response = await api.searchJobs({
+        query: searchState.query,
+        location: searchState.location,
+        page: searchState.page,
+      });
       setJobs(response.jobs);
       setTotal(response.total);
       setTotalPages(response.totalPages);
@@ -34,20 +45,18 @@ const JobsPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [searchParams]);
+  }, [searchState]);
 
   useEffect(() => {
     fetchJobs();
   }, [fetchJobs]);
 
   const handleSearch = () => {
-    setSearchParams(prev => ({
-      ...prev,
-      keyword: searchTerm || undefined,
-      location: locationFilter || undefined,
-      remote: remoteFilter ? true : undefined,
+    setSearchState({
+      query: searchTerm || 'software engineer',
+      location: locationFilter,
       page: 1,
-    }));
+    });
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -57,7 +66,7 @@ const JobsPage: React.FC = () => {
   };
 
   const handlePageChange = (newPage: number) => {
-    setSearchParams(prev => ({
+    setSearchState(prev => ({
       ...prev,
       page: newPage,
     }));
@@ -65,45 +74,49 @@ const JobsPage: React.FC = () => {
 
   const handleRemoteToggle = () => {
     setRemoteFilter(!remoteFilter);
-    setSearchParams(prev => ({
-      ...prev,
-      remote: !remoteFilter ? true : undefined,
-      page: 1,
-    }));
+    // Note: Remote filtering is done client-side since JSearch API
+    // handles location-based remote search through the location parameter
   };
 
   const filteredJobs = useMemo(() => {
-    if (!jobTypeFilter) {
-      return jobs;
+    let result = jobs;
+
+    // Apply job type filter client-side
+    if (jobTypeFilter) {
+      const normalizedFilter = jobTypeFilter.toLowerCase();
+      result = result.filter(job => {
+        const haystack = [job.title, job.description, ...(job.tags || [])]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+
+        if (normalizedFilter === 'internship') {
+          return haystack.includes('intern');
+        }
+
+        if (normalizedFilter === 'contract') {
+          return haystack.includes('contract') || haystack.includes('freelance');
+        }
+
+        if (normalizedFilter === 'part-time') {
+          return haystack.includes('part-time') || haystack.includes('part time');
+        }
+
+        if (normalizedFilter === 'full-time') {
+          return haystack.includes('full-time') || haystack.includes('full time');
+        }
+
+        return true;
+      });
     }
 
-    const normalizedFilter = jobTypeFilter.toLowerCase();
+    // Apply remote filter client-side
+    if (remoteFilter) {
+      result = result.filter(job => job.remote);
+    }
 
-    return jobs.filter(job => {
-      const haystack = [job.title, job.description, ...(job.tags || [])]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase();
-
-      if (normalizedFilter === 'internship') {
-        return haystack.includes('intern');
-      }
-
-      if (normalizedFilter === 'contract') {
-        return haystack.includes('contract') || haystack.includes('freelance');
-      }
-
-      if (normalizedFilter === 'part-time') {
-        return haystack.includes('part-time') || haystack.includes('part time');
-      }
-
-      if (normalizedFilter === 'full-time') {
-        return haystack.includes('full-time') || haystack.includes('full time');
-      }
-
-      return true;
-    });
-  }, [jobs, jobTypeFilter]);
+    return result;
+  }, [jobs, jobTypeFilter, remoteFilter]);
 
   if (loading && jobs.length === 0) {
     return (
@@ -177,6 +190,12 @@ const JobsPage: React.FC = () => {
         
         <div className="mt-4 flex flex-wrap gap-2">
           <button 
+            onClick={handleSearch}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+          >
+            Search
+          </button>
+          <button 
             className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
               remoteFilter 
                 ? 'bg-blue-600 text-white' 
@@ -184,7 +203,7 @@ const JobsPage: React.FC = () => {
             }`}
             onClick={handleRemoteToggle}
           >
-            Remote
+            Remote Only
           </button>
           <button className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium hover:bg-blue-200 transition-colors">
             Entry Level
@@ -253,8 +272,8 @@ const JobsPage: React.FC = () => {
       {totalPages > 1 && (
         <div className="flex justify-center items-center gap-2 mt-12">
           <button
-            onClick={() => handlePageChange((searchParams.page || 1) - 1)}
-            disabled={searchParams.page === 1}
+            onClick={() => handlePageChange(searchState.page - 1)}
+            disabled={searchState.page === 1}
             className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Previous
@@ -264,19 +283,19 @@ const JobsPage: React.FC = () => {
               let pageNum: number;
               if (totalPages <= 5) {
                 pageNum = i + 1;
-              } else if ((searchParams.page || 1) <= 3) {
+              } else if (searchState.page <= 3) {
                 pageNum = i + 1;
-              } else if ((searchParams.page || 1) >= totalPages - 2) {
+              } else if (searchState.page >= totalPages - 2) {
                 pageNum = totalPages - 4 + i;
               } else {
-                pageNum = (searchParams.page || 1) - 2 + i;
+                pageNum = searchState.page - 2 + i;
               }
               return (
                 <button
                   key={pageNum}
                   onClick={() => handlePageChange(pageNum)}
                   className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                    searchParams.page === pageNum
+                    searchState.page === pageNum
                       ? 'bg-blue-600 text-white'
                       : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
                   }`}
@@ -287,8 +306,8 @@ const JobsPage: React.FC = () => {
             })}
           </div>
           <button
-            onClick={() => handlePageChange((searchParams.page || 1) + 1)}
-            disabled={searchParams.page === totalPages}
+            onClick={() => handlePageChange(searchState.page + 1)}
+            disabled={searchState.page === totalPages}
             className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Next
