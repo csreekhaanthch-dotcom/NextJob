@@ -13,16 +13,22 @@ import path from 'path';
  */
 function validateEnvironment(): void {
   const requiredEnvVars = ['SUPABASE_URL', 'SUPABASE_SERVICE_KEY'];
+  const provided = requiredEnvVars.filter(varName => process.env[varName]);
   const missing = requiredEnvVars.filter(varName => !process.env[varName]);
 
-  if (missing.length > 0) {
-    console.error('❌ Missing required environment variables:');
-    missing.forEach(varName => console.error(`   - ${varName}`));
-    console.error('\nPlease set these in Render Dashboard → Environment');
-    process.exit(1);
+  if (provided.length === 0) {
+    console.warn('ℹ️  Supabase credentials not provided. Falling back to SQLite storage.');
+    return;
   }
 
-  console.log('✅ Environment variables validated');
+  if (missing.length > 0) {
+    console.warn('⚠️  Supabase credentials incomplete:');
+    missing.forEach(varName => console.warn(`   - ${varName}`));
+    console.warn('ℹ️  Falling back to SQLite storage.');
+    return;
+  }
+
+  console.log('✅ Supabase environment variables validated');
 }
 
 async function initializeSystem() {
