@@ -21,7 +21,15 @@ import healthCheckRoutes from '../monitoring/healthCheck';
 const app = express();
 const PORT = process.env.PORT || 3001;
 // ✅ CORS - Allow frontend domains
-const allowedOrigins = [
+const normalizeOrigins = (value?: string): string[] => {
+  if (!value) return [];
+  return value
+    .split(',')
+    .map(origin => origin.trim())
+    .filter(Boolean);
+};
+
+const defaultOrigins = [
   'http://localhost:3000',
   'http://localhost:5173',
   'https://nextjob-frontend.onrender.com',
@@ -29,10 +37,18 @@ const allowedOrigins = [
   'http://127.0.0.1:5173',
   'http://127.0.0.1:3000'
 ];
+
+const allowedOrigins = new Set([
+  ...defaultOrigins,
+  ...normalizeOrigins(process.env.FRONTEND_URL),
+  ...normalizeOrigins(process.env.CORS_ORIGINS),
+  ...normalizeOrigins(process.env.ALLOWED_ORIGINS)
+]);
+
 app.use(cors({
   origin: function (origin, callback) {
     if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) !== -1) {
+    if (allowedOrigins.size === 0 || allowedOrigins.has(origin)) {
       callback(null, true);
     } else {
       console.warn(`CORS blocked: ${origin}`);
@@ -181,6 +197,6 @@ app.use((err: any, req: any, res: any, next: any) => {
 app.listen(PORT, () => {
   logger.info('JobDone API server running', { port: PORT });
   console.log(`✅ NextJob API server running on port ${PORT}`);
-  console.log(`🔗 Allowed CORS origins: ${allowedOrigins.join(', ')}`);
+  console.log(`🔗 Allowed CORS origins: ${Array.from(allowedOrigins).join(', ')}`);
 });
 export default app;

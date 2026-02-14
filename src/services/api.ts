@@ -1,4 +1,5 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const RAW_API_URL = import.meta.env.VITE_API_URL || '/api';
+const API_URL = RAW_API_URL.replace(/\/+$/, '');
 
 export interface Job {
   id: string;
@@ -54,8 +55,17 @@ class ApiService {
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(`API error: ${response.status} ${response.statusText} - ${errorData.error || ''}`);
+      const errorText = await response.text();
+      let errorMessage = errorText;
+
+      try {
+        const errorData = JSON.parse(errorText) as { error?: string; message?: string };
+        errorMessage = errorData.error || errorData.message || errorText;
+      } catch (parseError) {
+        // Keep raw text as fallback
+      }
+
+      throw new Error(`API error: ${response.status} ${response.statusText}${errorMessage ? ` - ${errorMessage}` : ''}`);
     }
 
     return response.json();
