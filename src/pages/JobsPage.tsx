@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Search, MapPin, Filter } from 'lucide-react';
 import JobCard from '@/components/JobCard';
 import { api, Job, SearchParams } from '@/services/api';
@@ -71,6 +71,39 @@ const JobsPage: React.FC = () => {
       page: 1,
     }));
   };
+
+  const filteredJobs = useMemo(() => {
+    if (!jobTypeFilter) {
+      return jobs;
+    }
+
+    const normalizedFilter = jobTypeFilter.toLowerCase();
+
+    return jobs.filter(job => {
+      const haystack = [job.title, job.description, ...(job.tags || [])]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+      if (normalizedFilter === 'internship') {
+        return haystack.includes('intern');
+      }
+
+      if (normalizedFilter === 'contract') {
+        return haystack.includes('contract') || haystack.includes('freelance');
+      }
+
+      if (normalizedFilter === 'part-time') {
+        return haystack.includes('part-time') || haystack.includes('part time');
+      }
+
+      if (normalizedFilter === 'full-time') {
+        return haystack.includes('full-time') || haystack.includes('full time');
+      }
+
+      return true;
+    });
+  }, [jobs, jobTypeFilter]);
 
   if (loading && jobs.length === 0) {
     return (
@@ -179,7 +212,7 @@ const JobsPage: React.FC = () => {
       {/* Results Summary */}
       <div className="flex justify-between items-center mb-6">
         <p className="text-gray-600">
-          Showing <span className="font-semibold">{jobs.length}</span> of{' '}
+          Showing <span className="font-semibold">{filteredJobs.length}</span> of{' '}
           <span className="font-semibold">{total}</span> jobs
         </p>
         <select className="border border-gray-300 rounded-lg px-3 py-2 text-sm">
@@ -191,7 +224,7 @@ const JobsPage: React.FC = () => {
       
       {/* Job Listings */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {jobs.map(job => (
+        {filteredJobs.map(job => (
           <JobCard key={job.id} job={job} />
         ))}
       </div>
@@ -204,7 +237,7 @@ const JobsPage: React.FC = () => {
       )}
       
       {/* No Results */}
-      {jobs.length === 0 && !loading && (
+      {filteredJobs.length === 0 && !loading && (
         <div className="text-center py-12">
           <div className="bg-gray-100 p-8 rounded-xl max-w-md mx-auto">
             <Search className="h-12 w-12 text-gray-400 mx-auto mb-4" />
