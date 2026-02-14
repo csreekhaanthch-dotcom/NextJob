@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Globe, Users, Clock, Building, MapPin, Sparkles, Briefcase } from 'lucide-react';
+import { Search, Globe, Users, Clock, Sparkles, Briefcase } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const HomePage: React.FC = () => {

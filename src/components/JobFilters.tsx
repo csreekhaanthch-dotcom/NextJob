@@ -1,11 +1,7 @@
 import React from 'react';
 import { X } from 'lucide-react';
 
-interface JobFiltersProps {
-  onFilterChange: (filters: any) => void;
-}
-
-const JobFilters: React.FC<JobFiltersProps> = ({ onFilterChange }) => {
+const JobFilters: React.FC = () => {
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
       <div className="flex justify-between items-center mb-4">
