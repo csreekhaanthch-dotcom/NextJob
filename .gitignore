@@ -15,6 +15,8 @@ backend/dist/
 .env.local
 .env.*.local
 server/.env
+server/node_modules/
+server/dist/
 !.env.example
 
 # Logs

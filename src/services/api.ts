@@ -1,122 +1,21 @@
-const RAW_API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-const API_URL = RAW_API_URL.replace(/\/+$/, '');
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
-export interface Job {
-  id: string;
-  title: string;
-  title_normalized: string;
-  company: string;
-  company_domain: string;
-  location: string;
-  location_normalized: string;
-  remote: boolean;
-  posted_date: number;
-  source: string;
-  job_url: string;
-  description?: string;
-  salary?: string;
-  tags?: string[];
-  ranking_score?: number;
+export async function searchJobs(query: string, location?: string) {
+  const params = new URLSearchParams();
+  params.append("query", query);
+  if (location) params.append("location", location);
+
+  const response = await fetch(`${API_BASE_URL}/api/jobs/search?${params}`);
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to fetch jobs");
+  }
+  
+  return response.json();
 }
 
-export interface JobsResponse {
-  jobs: Job[];
-  total: number;
-  page: number;
-  totalPages: number;
-  performance?: {
-    duration_ms: number;
-    cached: boolean;
-  };
+export async function checkHealth() {
+  const response = await fetch(`${API_BASE_URL}/health`);
+  return response.json();
 }
-
-export interface SearchParams {
-  keyword?: string;
-  location?: string;
-  remote?: boolean;
-  page?: number;
-  limit?: number;
-}
-
-class ApiService {
-  private baseUrl: string;
-
-  constructor() {
-    this.baseUrl = API_URL;
-  }
-
-  private async fetch<T>(endpoint: string, options?: RequestInit): Promise<T> {
-    const response = await fetch(`${this.baseUrl}${endpoint}`, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options?.headers,
-      },
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      let errorMessage = errorText;
-
-      try {
-        const errorData = JSON.parse(errorText) as { error?: string; message?: string };
-        errorMessage = errorData.error || errorData.message || errorText;
-      } catch (parseError) {
-        // Keep raw text as fallback
-      }
-
-      throw new Error(`API error: ${response.status} ${response.statusText}${errorMessage ? ` - ${errorMessage}` : ''}`);
-    }
-
-    return response.json();
-  }
-
-  async searchJobs(params: { query: string; location?: string; page?: number }): Promise<JobsResponse> {
-    const queryParams = new URLSearchParams();
-    
-    queryParams.append('query', params.query);
-    if (params.location) queryParams.append('location', params.location);
-    if (params.page) queryParams.append('page', params.page.toString());
-
-    return this.fetch<JobsResponse>(`/api/jobs/search?${queryParams.toString()}`);
-  }
-
-  async getJobs(params?: SearchParams): Promise<JobsResponse> {
-    const queryParams = new URLSearchParams();
-    
-    if (params?.keyword) queryParams.append('keyword', params.keyword);
-    if (params?.location) queryParams.append('location', params.location);
-    if (params?.remote !== undefined) queryParams.append('remote', String(params.remote));
-    if (params?.page) queryParams.append('page', params.page.toString());
-    if (params?.limit) queryParams.append('limit', params.limit.toString());
-
-    const query = queryParams.toString();
-    return this.fetch<JobsResponse>(`/api/jobs${query ? `?${query}` : ''}`);
-  }
-
-  async getJob(id: string): Promise<Job> {
-    return this.fetch<Job>(`/api/jobs/${id}`);
-  }
-
-  async uploadResume(file: File): Promise<{ matches: any[] }> {
-    const formData = new FormData();
-    formData.append('resume', file);
-
-    const response = await fetch(`${this.baseUrl}/match`, {
-      method: 'POST',
-      body: formData,
-    });
-
-    if (!response.ok) {
-      throw new Error(`Upload failed: ${response.status}`);
-    }
-
-    return response.json();
-  }
-
-  async healthCheck(): Promise<{ status: string }> {
-    return this.fetch<{ status: string }>('/health');
-  }
-}
-
-export const api = new ApiService();
