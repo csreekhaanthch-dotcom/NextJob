@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
-# Render buildpack run script
 
-echo "Running pre-build setup..."
+echo "Running Render buildpack configuration..."
 
-# Run cleanup script
-./scripts/cleanup.sh
+# Make scripts executable
+chmod +x cleanup-pnpm.sh
+chmod +x render-build.sh
 
-echo "Pre-build setup completed!"
+# Run cleanup
+./cleanup-pnpm.sh
+
+echo "Buildpack configuration completed!"
