@@ -1,21 +1,17 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://nextjob-cnah.onrender.com';
 
 export interface Job {
   id: string;
   title: string;
-  title_normalized: string;
   company: string;
-  company_domain: string;
   location: string;
-  location_normalized: string;
   remote: boolean;
   posted_date: number;
-  source: string;
   job_url: string;
   description?: string;
   salary?: string;
   tags?: string[];
-  ranking_score?: number;
+  logo?: string;
 }
 
 export interface SearchJobsResponse {
@@ -41,7 +37,6 @@ class ApiService {
         const errorJson = JSON.parse(errorText);
         errorMessage = errorJson.error || errorJson.message || errorMessage;
       } catch (e) {
-        // If parsing fails, use the raw text
         if (errorText) {
           errorMessage = errorText;
         }
@@ -73,14 +68,6 @@ class ApiService {
 
   async getJob(id: string): Promise<Job> {
     const response = await fetch(`${this.baseUrl}/jobs/${id}`);
-    return this.handleResponse(response);
-  }
-
-  async uploadResume(formData: FormData): Promise<any> {
-    const response = await fetch(`${this.baseUrl}/match`, {
-      method: 'POST',
-      body: formData,
-    });
     return this.handleResponse(response);
   }
 
