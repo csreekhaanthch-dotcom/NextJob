@@ -28,10 +28,9 @@ services:
     buildCommand: npm install && npm run build
     staticPublishPath: dist
     envVars:
-      # THIS IS WHERE VITE_API_URL IS DEFINED
-      # After first deployment, replace this with your actual backend URL
+      # Updated with your actual backend URL
       - key: VITE_API_URL
-        value: https://jobboard-backend-YOUR-ACTUAL-RENDER-URL.onrender.com
+        value: https://nextjob-cnah.onrender.com
     routes:
       - type: rewrite
         source: /*
