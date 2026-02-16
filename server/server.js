@@ -26,24 +26,13 @@ app.use(limiter);
 app.use(cors());
 app.use(express.json());
 
-// Serve static files from the React app in production
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../dist')));
-  
-  // Return the React app for any non-API routes
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../dist', 'index.html'));
-  });
-}
-
 // Health check
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'ok', 
     timestamp: new Date().toISOString(),
     rapidapi_configured: !!process.env.RAPIDAPI_KEY,
-    service: 'jobboard-backend',
-    supabase_configured: !!process.env.SUPABASE_URL
+    service: 'jobboard-backend'
   });
 });
 
@@ -57,8 +46,6 @@ app.get('/jobs', async (req, res) => {
     if (keyword) searchQuery = keyword;
     if (location) searchQuery += ` in ${location}`;
     if (remote === 'true') searchQuery += ' remote';
-    
-    console.log('Searching for:', searchQuery);
     
     // Check if RapidAPI key is configured
     if (!process.env.RAPIDAPI_KEY) {
@@ -178,7 +165,17 @@ app.get('/jobs/:id', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
+// Serve static files in production
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, '../dist')));
+  
+  // Handle client-side routing
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../dist', 'index.html'));
+  });
+}
+
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Job search server running on port ${PORT}`);
   console.log(`Health check: http://localhost:${PORT}/health`);
   console.log(`Jobs endpoint: http://localhost:${PORT}/jobs`);
@@ -186,14 +183,6 @@ app.listen(PORT, () => {
   if (!process.env.RAPIDAPI_KEY) {
     console.warn('⚠️  RAPIDAPI_KEY not set in environment variables!');
     console.warn('   Please add your RapidAPI key to server/.env file');
-  }
-  
-  // Initialize database connection
-  console.log('Database configuration:');
-  if (process.env.SUPABASE_URL) {
-    console.log('✅ Supabase configured');
-  } else {
-    console.log('ℹ️  Using SQLite (no Supabase configuration found)');
   }
 });
 
