@@ -37,7 +37,7 @@ app.get('/health', (req, res) => {
 });
 
 // Jobs search endpoint
-app.get('/jobs', async (req, res) => {
+app.get('/api/jobs', async (req, res) => {
   try {
     const { keyword, location, page = '1', limit = '20', remote } = req.query;
     
@@ -104,7 +104,7 @@ app.get('/jobs', async (req, res) => {
 });
 
 // Get single job endpoint
-app.get('/jobs/:id', async (req, res) => {
+app.get('/api/jobs/:id', async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -178,7 +178,7 @@ if (process.env.NODE_ENV === 'production') {
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Job search server running on port ${PORT}`);
   console.log(`Health check: http://localhost:${PORT}/health`);
-  console.log(`Jobs endpoint: http://localhost:${PORT}/jobs`);
+  console.log(`Jobs endpoint: http://localhost:${PORT}/api/jobs`);
   
   if (!process.env.RAPIDAPI_KEY) {
     console.warn('⚠️  RAPIDAPI_KEY not set in environment variables!');
