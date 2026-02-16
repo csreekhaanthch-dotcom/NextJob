@@ -5,7 +5,8 @@ services:
     env: static
     region: oregon
     plan: free
-    buildCommand: npm install && npm run build
+    # Run cleanup before building
+    buildCommand: chmod +x cleanup-pnpm.sh && ./cleanup-pnpm.sh && npm install && npm run build
     staticPublishPath: dist
     envVars:
       - key: NODE_VERSION
@@ -18,6 +19,7 @@ services:
       - type: rewrite
         source: /*
         destination: /index.html
+    buildPack: https://github.com/renderinc/heroku-buildpack-nodejs
   
   # Backend API Service
   - type: web
@@ -25,7 +27,8 @@ services:
     env: node
     region: oregon
     plan: free
-    buildCommand: cd backend && npm install && npm run build
+    # Run cleanup before building
+    buildCommand: chmod +x cleanup-pnpm.sh && ./cleanup-pnpm.sh && cd backend && npm install && npm run build
     startCommand: cd backend && npm start
     envVars:
       - key: NODE_VERSION
@@ -35,3 +38,4 @@ services:
       - key: RAPIDAPI_KEY
         sync: false
     healthCheckPath: /health
+    buildPack: https://github.com/renderinc/heroku-buildpack-nodejs
