@@ -28,7 +28,7 @@ services:
     staticPublishPath: ./dist
     envVars:
       - key: VITE_API_URL
-        value: https://jobboard-backend-<REPLACE_WITH_YOUR_RENDER_USERNAME>.onrender.com
+        value: https://nextjob-cnah.onrender.com
     routes:
       - type: rewrite
         source: /*
