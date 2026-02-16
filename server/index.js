@@ -1,3 +1,6 @@
+import jobsRoute from "./routes/jobs";
+app.use("/api/jobs", jobsRoute);
+
 import dotenv from "dotenv";
 dotenv.config();
 
