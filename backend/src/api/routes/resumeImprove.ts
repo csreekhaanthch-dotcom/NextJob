@@ -28,7 +28,7 @@ const upload = multer({
  * POST /resume-improve
  * Analyze resume and provide improvement suggestions
  */
-router.post('/', upload.single('resume'), async (req, res) => {
+router.post('/', upload.single('resume'), async (req, res): Promise<void> => {
   try {
     let resumeText: string;
     
@@ -40,7 +40,8 @@ router.post('/', upload.single('resume'), async (req, res) => {
       // Use provided text
       resumeText = req.body.resume_text;
     } else {
-      return res.status(400).json({ error: 'Resume file or text is required' });
+      res.status(400).json({ error: 'Resume file or text is required' });
+      return;
     }
 
     const startTime = Date.now();

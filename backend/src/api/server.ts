@@ -1,9 +1,20 @@
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
-import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
+import compression from 'compression';
+import dotenv from 'dotenv';
+import rateLimit from 'express-rate-limit';
+import { createClient } from '@supabase/supabase-js';
+
+// Load environment variables
+dotenv.config();
+
+// Import services
 import { searchService } from '../services/searchService';
 import { analyticsService } from '../services/analyticsService';
+import { logger } from '../monitoring/logger';
+
+// Import routes
 import matchRoutes from './routes/match';
 import resumeImproveRoutes from './routes/resumeImprove';
 import personalizationRoutes from './routes/personalization';
@@ -11,58 +22,112 @@ import recruiterRoutes from './routes/recruiter';
 import resumeUploadRoutes from './routes/resumeUpload';
 import healthCheckRoutes from '../monitoring/healthCheck';
 
+// Initialize Express app
 const app = express();
 const PORT = process.env.PORT || 3001;
+const NODE_ENV = process.env.NODE_ENV || 'development';
 
-// Rate limiting configuration
+// ✅ CORS - Allow frontend domains
+const normalizeOrigins = (value?: string): string[] => {
+  if (!value) return [];
+  return value
+    .split(',')
+    .map(origin => origin.trim())
+    .filter(Boolean);
+};
+
+const defaultOrigins = [
+  'http://localhost:3000',
+  'http://localhost:5173',
+  'http://localhost:4173',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:3000'
+];
+
+// Add production origins from environment
+const allowedOrigins = new Set([
+  ...defaultOrigins,
+  ...normalizeOrigins(process.env.FRONTEND_URL),
+  ...normalizeOrigins(process.env.CORS_ORIGINS),
+  ...normalizeOrigins(process.env.ALLOWED_ORIGINS)
+]);
+
+// CORS middleware
+app.use(cors({
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.size === 0 || allowedOrigins.has(origin)) {
+      callback(null, true);
+    } else {
+      console.warn(`CORS blocked: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+// Security middleware - Helmet
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'", "https:"],
+    },
+  },
+  crossOriginEmbedderPolicy: false,
+}));
+
+// Compression
+app.use(compression());
+
+// Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // limit each IP to 100 requests per windowMs
-  message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
+  message: { error: 'Too many requests, please try again later.' }
 });
 
-// Strict rate limiting for sensitive endpoints
 const strictLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // limit each IP to 5 requests per windowMs
-  message: 'Too many requests from this IP, please try again later.',
+  max: 10, // limit each IP to 10 requests per windowMs
   standardHeaders: true,
   legacyHeaders: false,
-  skipSuccessfulRequests: false,
+  message: { error: 'Too many requests, please try again later.' }
 });
 
-// Resume upload rate limiting
-const resumeUploadLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: 3, // limit each IP to 3 resume uploads per hour
-  message: 'Too many resume uploads. Please try again later.',
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-// Security middleware
-app.use(helmet());
-app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'User-ID'],
-  credentials: true
-}));
-
-// Rate limiting
+// Apply rate limiting to all routes
 app.use(limiter);
 
-// Body parsing middleware
+// Body parsing
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Health check endpoints
+// Request logging
+app.use((req: Request, res: Response, next: NextFunction) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+  next();
+});
+
+// Initialize Supabase if available
+let supabase = null;
+if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY) {
+  supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+  console.log('✅ Supabase client initialized');
+}
+
+// Health check (no rate limiting)
 app.use('/health', healthCheckRoutes);
 
 // Search endpoint
-app.get('/jobs', async (req, res) => {
+app.get('/jobs', async (req: Request, res: Response): Promise<void> => {
   try {
     const {
       keyword = '',
@@ -71,122 +136,136 @@ app.get('/jobs', async (req, res) => {
       page = '1',
       limit = '20'
     } = req.query;
-    
+
     const searchParams = {
       keyword: keyword as string,
       location: location as string,
       remote: remote !== undefined ? remote === 'true' : undefined,
-      page: parseInt(page as string, 10),
-      limit: Math.min(parseInt(limit as string, 10), 100) // Cap at 100
+      page: parseInt(page as string, 10) || 1,
+      limit: Math.min(parseInt(limit as string, 10) || 20, 100)
     };
-    
-    // Validate parameters
-    if (searchParams.page < 1) searchParams.page = 1;
-    if (searchParams.limit < 1) searchParams.limit = 20;
-    
+
     const startTime = Date.now();
     const result = await searchService.search(searchParams);
     const duration = Date.now() - startTime;
-    
-    // Add performance metrics to response
+
     res.status(200).json({
       ...result,
       performance: {
         duration_ms: duration,
-        cached: duration < 10 // Assume cached if < 10ms
+        cached: duration < 10
       }
     });
   } catch (error) {
-    console.error('Search error:', error);
+    logger.error('Search error', { error });
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
 // Analytics endpoints
-app.get('/stats/trending', async (req, res) => {
+app.get('/stats/trending', async (req: Request, res: Response): Promise<void> => {
   try {
     const days = parseInt(req.query.days as string) || 7;
     const trending = await analyticsService.getTrendingSkills(Math.min(days, 30));
     res.status(200).json(trending);
   } catch (error) {
-    console.error('Trending stats error:', error);
+    logger.error('Trending stats error', { error });
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-app.get('/stats/remote-ratio', async (req, res) => {
+app.get('/stats/remote-ratio', async (req: Request, res: Response): Promise<void> => {
   try {
     const ratio = await analyticsService.getRemoteRatio();
     res.status(200).json(ratio);
   } catch (error) {
-    console.error('Remote ratio error:', error);
+    logger.error('Remote ratio error', { error });
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-app.get('/stats/top-companies', async (req, res) => {
+app.get('/stats/top-companies', async (req: Request, res: Response): Promise<void> => {
   try {
     const limit = parseInt(req.query.limit as string) || 20;
     const companies = await analyticsService.getTopCompanies(Math.min(limit, 100));
     res.status(200).json(companies);
   } catch (error) {
-    console.error('Top companies error:', error);
+    logger.error('Top companies error', { error });
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-app.get('/stats/location-growth', async (req, res) => {
+app.get('/stats/location-growth', async (req: Request, res: Response): Promise<void> => {
   try {
     const growth = await analyticsService.getLocationGrowth();
     res.status(200).json(growth);
   } catch (error) {
-    console.error('Location growth error:', error);
+    logger.error('Location growth error', { error });
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-// Cache management endpoint (admin only)
-app.post('/admin/cache/clear', (req, res) => {
+// Cache management (admin) - apply strict rate limiting
+app.post('/admin/cache/clear', strictLimiter, (req: Request, res: Response): void => {
   try {
     searchService.clearCache();
-    res.status(200).json({ message: 'Cache cleared successfully' });
+    res.status(200).json({ message: 'Cache cleared' });
   } catch (error) {
-    console.error('Cache clear error:', error);
+    logger.error('Cache clear error', { error });
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-// Resume matching endpoint
-app.use('/match', matchRoutes);
+// Resume routes with strict rate limiting
+app.use('/match', strictLimiter, matchRoutes);
+app.use('/resume-improve', strictLimiter, resumeImproveRoutes);
+app.use('/personalization', limiter, personalizationRoutes);
+app.use('/recruiter', limiter, recruiterRoutes);
+app.use('/resume/upload', strictLimiter, resumeUploadRoutes);
 
-// Resume improvement endpoint
-app.use('/resume-improve', resumeImproveRoutes);
+// Home route
+app.get('/', (req: Request, res: Response): void => {
+  res.json({
+    name: 'NextJob API',
+    version: '1.0.0',
+    status: 'running',
+    environment: NODE_ENV,
+    endpoints: {
+      health: '/health',
+      jobs: '/jobs',
+      stats: '/stats/*',
+      match: '/match',
+      personalize: '/personalization',
+      recruiter: '/recruiter'
+    }
+  });
+});
 
-// Personalization endpoints
-app.use('/personalization', personalizationRoutes);
+// 404 handler
+app.use((req: Request, res: Response): void => {
+  res.status(404).json({ error: 'Not Found' });
+});
 
-// Recruiter endpoints
-app.use('/recruiter', recruiterRoutes);
-
-// Resume upload endpoint
-app.use('/resume/upload', resumeUploadRoutes);
-
-// Error handling middleware
-app.use((err: any, req: any, res: any, next: any) => {
-  // Log error for debugging (in production, use a proper logging solution)
-  console.error('Error occurred:', err);
+// Global error handler
+app.use((err: Error, req: Request, res: Response, next: NextFunction): void => {
+  logger.error('Error occurred', { error: err.message, stack: err.stack });
   
-  // Don't expose internal error details to client
-  if (process.env.NODE_ENV === 'production') {
-    res.status(500).json({ error: 'Internal server error' });
-  } else {
-    res.status(500).json({ error: err.message || 'Internal server error' });
-  }
+  // Don't leak error details in production
+  const message = NODE_ENV === 'production' 
+    ? 'Internal server error' 
+    : err.message;
+    
+  res.status(500).json({ error: message });
 });
 
 // Start server
-app.listen(PORT, () => {
-  console.log(`JobDone API server running on port ${PORT}`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    logger.info('JobDone API server running', { port: PORT, environment: NODE_ENV });
+    console.log(`✅ NextJob API server running on port ${PORT}`);
+    console.log(`🔧 Environment: ${NODE_ENV}`);
+    console.log(`🔗 Allowed CORS origins: ${Array.from(allowedOrigins).join(', ')}`);
+  });
+}
 
 export default app;
