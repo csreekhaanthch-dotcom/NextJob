@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://jobdone-api.fly.dev';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://jobboard-backend-onrender.onrender.com';
 
 export interface Job {
   id: string;
