@@ -3,6 +3,12 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
 import axios from 'axios';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// Get the directory name
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 dotenv.config();
 
@@ -20,25 +26,38 @@ app.use(limiter);
 app.use(cors());
 app.use(express.json());
 
+// Serve static files from the React app in production
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, '../dist')));
+  
+  // Return the React app for any non-API routes
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../dist', 'index.html'));
+  });
+}
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'ok', 
     timestamp: new Date().toISOString(),
-    rapidapi_configured: !!process.env.RAPIDAPI_KEY
+    rapidapi_configured: !!process.env.RAPIDAPI_KEY,
+    service: 'jobboard-backend'
   });
 });
 
 // Jobs search endpoint
-app.get('/api/jobs', async (req, res) => {
+app.get('/jobs', async (req, res) => {
   try {
-    const { keyword, location, page = '1', limit = '20' } = req.query;
+    const { keyword, location, page = '1', limit = '20', remote } = req.query;
     
-    // Use defaults if no parameters provided
-    const searchQuery = keyword || 'software engineer';
-    const searchLocation = location || 'remote';
+    // Build search query
+    let searchQuery = 'software engineer';
+    if (keyword) searchQuery = keyword;
+    if (location) searchQuery += ` in ${location}`;
+    if (remote === 'true') searchQuery += ' remote';
     
-    console.log('Searching for:', searchQuery, 'in', searchLocation);
+    console.log('Searching for:', searchQuery);
     
     // Check if RapidAPI key is configured
     if (!process.env.RAPIDAPI_KEY) {
@@ -53,7 +72,6 @@ app.get('/api/jobs', async (req, res) => {
       url: 'https://jsearch.p.rapidapi.com/search',
       params: {
         query: searchQuery,
-        location: searchLocation,
         page: page,
         num_pages: '1'
       },
@@ -63,31 +81,23 @@ app.get('/api/jobs', async (req, res) => {
       }
     };
 
-    console.log('Making API request to JSearch...');
-    
     const response = await axios.request(options);
     
     // Normalize response to match our Job interface
     const jobs = response.data.data?.map(job => ({
       id: job.job_id || Math.random().toString(36).substr(2, 9),
       title: job.job_title || 'Untitled Position',
-      title_normalized: (job.job_title || '').toLowerCase(),
       company: job.employer_name || 'Unknown Company',
-      company_domain: job.employer_website ? 
-        job.employer_website.replace(/^https?:\/\//, '').replace(/\/.*$/, '') : 
-        'unknown.com',
-      location: job.job_location || `${job.job_city || ''}, ${job.job_state || ''}`.replace(/^,\s*|,\s*$/g, '') || 'Remote',
-      location_normalized: (job.job_location || `${job.job_city || ''}, ${job.job_state || ''}`.replace(/^,\s*|,\s*$/g, '') || 'remote').toLowerCase(),
+      location: job.job_city && job.job_state 
+        ? `${job.job_city}, ${job.job_state}` 
+        : job.job_country || 'Remote',
       remote: job.job_is_remote || false,
-      posted_date: job.job_posted_at_datetime_utc ? 
-        Math.floor(new Date(job.job_posted_at_datetime_utc).getTime() / 1000) : 
-        Math.floor(Date.now() / 1000),
-      source: 'jsearch',
+      posted_date: job.job_posted_at_timestamp || Math.floor(Date.now() / 1000),
       job_url: job.job_apply_link || job.job_google_link || '#',
-      description: job.job_description || 'No description available',
+      description: job.job_description?.substring(0, 300) + '...' || 'No description available',
       salary: job.job_salary || job.job_salary_currency || 'Not specified',
       tags: job.job_required_skills || [],
-      ranking_score: job.job_apply_quality_score || 0
+      logo: job.employer_logo || null
     })) || [];
 
     res.json({
@@ -98,20 +108,15 @@ app.get('/api/jobs', async (req, res) => {
     });
   } catch (error) {
     console.error('API Error:', error.message);
-    if (error.response) {
-      console.error('Response data:', error.response.data);
-      console.error('Response status:', error.response.status);
-    }
     res.status(500).json({ 
       error: 'Failed to fetch jobs',
-      message: error.message,
-      ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
+      message: error.response?.data?.message || error.message
     });
   }
 });
 
 // Get single job endpoint
-app.get('/api/jobs/:id', async (req, res) => {
+app.get('/jobs/:id', async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -123,12 +128,12 @@ app.get('/api/jobs/:id', async (req, res) => {
       });
     }
     
-    // JSearch doesn't have a direct job by ID endpoint, so we search with the ID
+    // Search for the job by ID
     const options = {
       method: 'GET',
       url: 'https://jsearch.p.rapidapi.com/search',
       params: {
-        query: `"${id}"`, // Search for the exact ID
+        query: `"${id}"`,
         page: '1',
         num_pages: '1'
       },
@@ -146,23 +151,23 @@ app.get('/api/jobs/:id', async (req, res) => {
       return res.status(404).json({ error: 'Job not found' });
     }
 
-    res.json({
+    const normalizedJob = {
       id: job.job_id,
       title: job.job_title,
-      title_normalized: job.job_title?.toLowerCase() || '',
       company: job.employer_name,
-      company_domain: job.employer_website?.replace(/^https?:\/\//, '').replace(/\/.*$/, '') || '',
-      location: job.job_location || `${job.job_city || ''}, ${job.job_state || ''}`.replace(/^,\s*|,\s*$/g, '') || 'Remote',
-      location_normalized: (job.job_location || `${job.job_city || ''}, ${job.job_state || ''}`).toLowerCase().replace(/^,\s*|,\s*$/g, '') || 'remote',
+      location: job.job_city && job.job_state 
+        ? `${job.job_city}, ${job.job_state}` 
+        : job.job_country || 'Remote',
       remote: job.job_is_remote || false,
-      posted_date: job.job_posted_at_datetime_utc ? Math.floor(new Date(job.job_posted_at_datetime_utc).getTime() / 1000) : Math.floor(Date.now() / 1000),
-      source: 'jsearch',
+      posted_date: job.job_posted_at_timestamp || Math.floor(Date.now() / 1000),
       job_url: job.job_apply_link || job.job_google_link,
       description: job.job_description,
       salary: job.job_salary || job.job_salary_currency,
       tags: job.job_required_skills || [],
-      ranking_score: job.job_apply_quality_score
-    });
+      logo: job.employer_logo || null
+    };
+
+    res.json(normalizedJob);
   } catch (error) {
     console.error('API Error:', error.message);
     res.status(500).json({ 
@@ -175,7 +180,7 @@ app.get('/api/jobs/:id', async (req, res) => {
 app.listen(PORT, () => {
   console.log(`Job search server running on port ${PORT}`);
   console.log(`Health check: http://localhost:${PORT}/health`);
-  console.log(`Jobs endpoint: http://localhost:${PORT}/api/jobs`);
+  console.log(`Jobs endpoint: http://localhost:${PORT}/jobs`);
   
   if (!process.env.RAPIDAPI_KEY) {
     console.warn('⚠️  RAPIDAPI_KEY not set in environment variables!');
