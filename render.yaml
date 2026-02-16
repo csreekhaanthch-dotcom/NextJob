@@ -7,7 +7,6 @@ services:
     plan: free
     buildCommand: cd server && npm install
     startCommand: cd server && npm start
-    rootDir: .
     envVars:
       - key: NODE_VERSION
         value: 18
@@ -15,10 +14,6 @@ services:
         value: 10000
       - key: RAPIDAPI_KEY
         sync: false
-      - key: RAPIDAPI_HOST
-        value: jsearch.p.rapidapi.com
-      - key: NODE_ENV
-        value: production
     healthCheckPath: /health
 
   # Frontend Static Site
@@ -28,9 +23,7 @@ services:
     region: oregon
     buildCommand: npm install && npm run build
     staticPublishPath: dist
-    rootDir: .
     envVars:
-      # Updated with your actual backend URL
       - key: VITE_API_URL
         value: https://nextjob-cnah.onrender.com
     routes:
