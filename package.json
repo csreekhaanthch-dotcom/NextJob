@@ -8,8 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "dev:server": "cd server && npm run dev",
-    "start": "cd server && npm start",
-    "clean": "rm -rf node_modules/.vite && rm -rf dist"
+    "start": "cd server && npm start"
   },
   "dependencies": {
     "@capacitor/android": "^7.0.0",
@@ -23,7 +22,9 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.8.0",
-    "tailwind-merge": "^1.14.0"
+    "tailwind-merge": "^1.14.0",
+    "@supabase/supabase-js": "^2.95.3",
+    "tsx": "^4.0.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

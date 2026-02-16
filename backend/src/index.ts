@@ -2,8 +2,10 @@ import express, { Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 
+// Load environment variables
 dotenv.config();
 
+// Initialize Express app
 const app = express();
 const PORT = parseInt(process.env.PORT || '3001', 10);
 
@@ -20,7 +22,7 @@ app.get('/health', (req: Request, res: Response) => {
   });
 });
 
-// Jobs search endpoint
+// Placeholder jobs endpoint
 app.get('/api/jobs', (req: Request, res: Response) => {
   res.json({ 
     jobs: [],
