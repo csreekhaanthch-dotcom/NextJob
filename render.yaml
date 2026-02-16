@@ -5,7 +5,7 @@ services:
     env: static
     region: oregon
     plan: free
-    buildCommand: pnpm install --no-frozen-lockfile && pnpm run build
+    buildCommand: npm install && npm run build
     staticPublishPath: dist
     envVars:
       - key: NODE_VERSION
