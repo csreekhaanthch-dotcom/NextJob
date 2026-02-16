@@ -7,6 +7,7 @@ services:
     plan: free
     buildCommand: cd server && npm install
     startCommand: cd server && npm start
+    rootDir: .
     envVars:
       - key: NODE_VERSION
         value: 18
@@ -27,6 +28,7 @@ services:
     region: oregon
     buildCommand: npm install && npm run build
     staticPublishPath: dist
+    rootDir: .
     envVars:
       # Updated with your actual backend URL
       - key: VITE_API_URL

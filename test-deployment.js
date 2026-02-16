@@ -1,17 +1,16 @@
-// Simple test script to verify your deployment
-console.log('Testing deployment configuration...\n');
+// Simple test to verify integration
+console.log('Testing backend integration...');
 
-// Your deployment URLs
-const frontendUrl = 'https://nextjob-frontend.onrender.com';
-const backendUrl = 'https://nextjob-cnah.onrender.com';
+// Check if required environment variables are set
+const requiredEnvVars = ['RAPIDAPI_KEY'];
+const missingEnvVars = requiredEnvVars.filter(envVar => !process.env[envVar]);
 
-console.log('Frontend URL:', frontendUrl);
-console.log('Backend URL:', backendUrl);
-console.log('\nExpected behavior:');
-console.log('- Frontend should load at the frontend URL');
-console.log('- Frontend should make API calls to the backend URL');
-console.log('- Backend should connect to JSearch API with your RAPIDAPI_KEY');
-console.log('\nMake sure to:');
-console.log('1. Add your RAPIDAPI_KEY to your Render backend environment variables');
-console.log('2. Check that both services are deployed successfully');
-console.log('3. Visit your frontend URL to test the application');
+if (missingEnvVars.length > 0) {
+  console.log('⚠️  Missing environment variables:', missingEnvVars);
+  console.log('Please set these variables in your Render dashboard');
+  process.exit(1);
+} else {
+  console.log('✅ All required environment variables are set');
+  console.log('✅ Backend is ready for deployment');
+  process.exit(0);
+}
