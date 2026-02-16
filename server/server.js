@@ -15,6 +15,16 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// CORS configuration for your frontend
+const corsOptions = {
+  origin: [
+    'http://localhost:3000',
+    'https://nextjob-frontend.onrender.com'
+  ],
+  credentials: true,
+  optionsSuccessStatus: 200
+};
+
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
@@ -23,7 +33,7 @@ const limiter = rateLimit({
 });
 
 app.use(limiter);
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // Health check
