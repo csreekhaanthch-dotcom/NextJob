@@ -1,11 +1,11 @@
 services:
-  # Backend API Service (runs from server directory)
+  # Backend API Service
   - type: web
     name: jobboard-backend
     env: node
     region: oregon
     plan: free
-    rootDir: ./server
+    rootDir: server
     buildCommand: npm install
     startCommand: npm start
     envVars:
@@ -17,7 +17,7 @@ services:
         sync: false
     healthCheckPath: /health
 
-  # Frontend Static Site (runs from root)
+  # Frontend Static Site
   - type: web
     name: jobboard-frontend
     env: static
