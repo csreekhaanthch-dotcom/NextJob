@@ -22,108 +22,72 @@ app.use(express.json());
 
 // Health check
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    rapidapi_configured: !!process.env.RAPIDAPI_KEY
+  });
 });
 
 // Jobs search endpoint
-app.get('/api/jobs/search', async (req, res) => {
+app.get('/api/jobs', async (req, res) => {
   try {
-    const { query, location, page = '1' } = req.query;
+    const { keyword, location, page = '1', limit = '20' } = req.query;
     
-    if (!query) {
-      return res.status(400).json({ error: 'Query parameter is required' });
+    // Use defaults if no parameters provided
+    const searchQuery = keyword || 'software engineer';
+    const searchLocation = location || 'remote';
+    
+    console.log('Searching for:', searchQuery, 'in', searchLocation);
+    
+    // Check if RapidAPI key is configured
+    if (!process.env.RAPIDAPI_KEY) {
+      return res.status(500).json({ 
+        error: 'RAPIDAPI_KEY not configured',
+        message: 'Please add your RapidAPI key to server/.env file'
+      });
     }
 
     const options = {
       method: 'GET',
       url: 'https://jsearch.p.rapidapi.com/search',
       params: {
-        query: query,
-        location: location || '',
+        query: searchQuery,
+        location: searchLocation,
         page: page,
         num_pages: '1'
       },
       headers: {
         'X-RapidAPI-Key': process.env.RAPIDAPI_KEY,
-        'X-RapidAPI-Host': process.env.RAPIDAPI_HOST
+        'X-RapidAPI-Host': process.env.RAPIDAPI_HOST || 'jsearch.p.rapidapi.com'
       }
     };
 
+    console.log('Making API request to JSearch...');
+    
     const response = await axios.request(options);
     
-    // Normalize response
+    // Normalize response to match our Job interface
     const jobs = response.data.data?.map(job => ({
-      id: job.job_id,
-      title: job.job_title,
-      title_normalized: job.job_title?.toLowerCase() || '',
-      company: job.employer_name,
-      company_domain: job.employer_website?.replace(/^https?:\/\//, '').replace(/\/.*$/, '') || '',
+      id: job.job_id || Math.random().toString(36).substr(2, 9),
+      title: job.job_title || 'Untitled Position',
+      title_normalized: (job.job_title || '').toLowerCase(),
+      company: job.employer_name || 'Unknown Company',
+      company_domain: job.employer_website ? 
+        job.employer_website.replace(/^https?:\/\//, '').replace(/\/.*$/, '') : 
+        'unknown.com',
       location: job.job_location || `${job.job_city || ''}, ${job.job_state || ''}`.replace(/^,\s*|,\s*$/g, '') || 'Remote',
-      location_normalized: (job.job_location || `${job.job_city || ''}, ${job.job_state || ''}`).toLowerCase().replace(/^,\s*|,\s*$/g, '') || 'remote',
+      location_normalized: (job.job_location || `${job.job_city || ''}, ${job.job_state || ''}`.replace(/^,\s*|,\s*$/g, '') || 'remote').toLowerCase(),
       remote: job.job_is_remote || false,
-      posted_date: job.job_posted_at_datetime_utc ? Math.floor(new Date(job.job_posted_at_datetime_utc).getTime() / 1000) : Math.floor(Date.now() / 1000),
+      posted_date: job.job_posted_at_datetime_utc ? 
+        Math.floor(new Date(job.job_posted_at_datetime_utc).getTime() / 1000) : 
+        Math.floor(Date.now() / 1000),
       source: 'jsearch',
-      job_url: job.job_apply_link || job.job_google_link,
-      description: job.job_description,
-      salary: job.job_salary || job.job_salary_currency,
+      job_url: job.job_apply_link || job.job_google_link || '#',
+      description: job.job_description || 'No description available',
+      salary: job.job_salary || job.job_salary_currency || 'Not specified',
       tags: job.job_required_skills || [],
-      ranking_score: job.job_apply_quality_score
-    })) || [];
-
-    res.json({
-      jobs,
-      total: response.data.total || jobs.length,
-      page: parseInt(page),
-      totalPages: Math.ceil((response.data.total || jobs.length) / 10)
-    });
-  } catch (error) {
-    console.error('API Error:', error.message);
-    res.status(500).json({ 
-      error: 'Failed to fetch jobs',
-      message: error.message 
-    });
-  }
-});
-
-// Legacy jobs endpoint for compatibility
-app.get('/api/jobs', async (req, res) => {
-  try {
-    const { keyword, location, page = '1', limit = '20' } = req.query;
-    
-    // Forward to search endpoint
-    const options = {
-      method: 'GET',
-      url: 'https://jsearch.p.rapidapi.com/search',
-      params: {
-        query: keyword || 'software engineer',
-        location: location || '',
-        page: page,
-        num_pages: '1'
-      },
-      headers: {
-        'X-RapidAPI-Key': process.env.RAPIDAPI_KEY,
-        'X-RapidAPI-Host': process.env.RAPIDAPI_HOST
-      }
-    };
-
-    const response = await axios.request(options);
-    
-    const jobs = response.data.data?.map(job => ({
-      id: job.job_id,
-      title: job.job_title,
-      title_normalized: job.job_title?.toLowerCase() || '',
-      company: job.employer_name,
-      company_domain: job.employer_website?.replace(/^https?:\/\//, '').replace(/\/.*$/, '') || '',
-      location: job.job_location || `${job.job_city || ''}, ${job.job_state || ''}`.replace(/^,\s*|,\s*$/g, '') || 'Remote',
-      location_normalized: (job.job_location || `${job.job_city || ''}, ${job.job_state || ''}`).toLowerCase().replace(/^,\s*|,\s*$/g, '') || 'remote',
-      remote: job.job_is_remote || false,
-      posted_date: job.job_posted_at_datetime_utc ? Math.floor(new Date(job.job_posted_at_datetime_utc).getTime() / 1000) : Math.floor(Date.now() / 1000),
-      source: 'jsearch',
-      job_url: job.job_apply_link || job.job_google_link,
-      description: job.job_description,
-      salary: job.job_salary || job.job_salary_currency,
-      tags: job.job_required_skills || [],
-      ranking_score: job.job_apply_quality_score
+      ranking_score: job.job_apply_quality_score || 0
     })) || [];
 
     res.json({
@@ -134,9 +98,14 @@ app.get('/api/jobs', async (req, res) => {
     });
   } catch (error) {
     console.error('API Error:', error.message);
+    if (error.response) {
+      console.error('Response data:', error.response.data);
+      console.error('Response status:', error.response.status);
+    }
     res.status(500).json({ 
       error: 'Failed to fetch jobs',
-      message: error.message 
+      message: error.message,
+      ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
     });
   }
 });
@@ -146,18 +115,26 @@ app.get('/api/jobs/:id', async (req, res) => {
   try {
     const { id } = req.params;
     
+    // Check if RapidAPI key is configured
+    if (!process.env.RAPIDAPI_KEY) {
+      return res.status(500).json({ 
+        error: 'RAPIDAPI_KEY not configured',
+        message: 'Please add your RapidAPI key to server/.env file'
+      });
+    }
+    
     // JSearch doesn't have a direct job by ID endpoint, so we search with the ID
     const options = {
       method: 'GET',
       url: 'https://jsearch.p.rapidapi.com/search',
       params: {
-        query: id,
+        query: `"${id}"`, // Search for the exact ID
         page: '1',
         num_pages: '1'
       },
       headers: {
         'X-RapidAPI-Key': process.env.RAPIDAPI_KEY,
-        'X-RapidAPI-Host': process.env.RAPIDAPI_HOST
+        'X-RapidAPI-Host': process.env.RAPIDAPI_HOST || 'jsearch.p.rapidapi.com'
       }
     };
 
@@ -196,5 +173,14 @@ app.get('/api/jobs/:id', async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`Job search server running on port ${PORT}`);
+  console.log(`Health check: http://localhost:${PORT}/health`);
+  console.log(`Jobs endpoint: http://localhost:${PORT}/api/jobs`);
+  
+  if (!process.env.RAPIDAPI_KEY) {
+    console.warn('⚠️  RAPIDAPI_KEY not set in environment variables!');
+    console.warn('   Please add your RapidAPI key to server/.env file');
+  }
 });
+
+export default app;

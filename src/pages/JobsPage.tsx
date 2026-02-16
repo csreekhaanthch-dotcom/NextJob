@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, MapPin, Filter } from 'lucide-react';
+import { Search, MapPin, Filter, AlertCircle, RefreshCw } from 'lucide-react';
 import JobCard from '@/components/JobCard';
 import { api, Job } from '@/services/api';
 
@@ -10,6 +10,7 @@ const JobsPage: React.FC = () => {
   const [remoteFilter, setRemoteFilter] = useState(false);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
+  const [initialLoad, setInitialLoad] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
@@ -24,15 +25,19 @@ const JobsPage: React.FC = () => {
         location: locationFilter || undefined,
         remote: remoteFilter || undefined,
         page: page,
-        limit: 20
+        limit: 12
       });
       
       setJobs(response.jobs);
       setTotalPages(response.totalPages);
       setLoading(false);
+      setInitialLoad(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch jobs');
+      console.error('Fetch jobs error:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch jobs';
+      setError(errorMessage);
       setLoading(false);
+      setInitialLoad(false);
     }
   }, [searchTerm, locationFilter, remoteFilter, page]);
 
@@ -59,7 +64,11 @@ const JobsPage: React.FC = () => {
     setRemoteFilter(!remoteFilter);
   };
 
-  if (loading && jobs.length === 0) {
+  const handleRetry = () => {
+    fetchJobs();
+  };
+
+  if (initialLoad && loading) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
@@ -67,7 +76,10 @@ const JobsPage: React.FC = () => {
           <p className="text-gray-600">Browse through our collection of opportunities</p>
         </div>
         <div className="flex justify-center items-center py-20">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading jobs...</p>
+          </div>
         </div>
       </div>
     );
@@ -142,9 +154,10 @@ const JobsPage: React.FC = () => {
           </button>
           <button 
             onClick={handleSearch}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+            disabled={loading}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
           >
-            Search
+            {loading ? 'Searching...' : 'Search'}
           </button>
         </div>
       </div>
@@ -152,29 +165,40 @@ const JobsPage: React.FC = () => {
       {/* Error State */}
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-          <p className="text-red-600 font-medium">Error loading jobs</p>
-          <p className="text-red-500 text-sm mt-1">{error}</p>
-          <button 
-            onClick={fetchJobs}
-            className="mt-3 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-          >
-            Retry
-          </button>
+          <div className="flex items-start">
+            <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 mr-2 flex-shrink-0" />
+            <div>
+              <p className="text-red-800 font-medium">Error loading jobs</p>
+              <p className="text-red-700 text-sm mt-1">{error}</p>
+              <button 
+                onClick={handleRetry}
+                className="mt-3 flex items-center text-red-700 hover:text-red-800 font-medium"
+              >
+                <RefreshCw className="h-4 w-4 mr-1" />
+                Try Again
+              </button>
+            </div>
+          </div>
         </div>
       )}
       
       {/* Results Summary */}
-      <div className="flex justify-between items-center mb-6">
-        <p className="text-gray-600">
-          Showing page <span className="font-semibold">{page}</span> of{' '}
-          <span className="font-semibold">{totalPages}</span> pages
-        </p>
-        <select className="border border-gray-300 rounded-lg px-3 py-2 text-sm">
-          <option>Most Recent</option>
-          <option>Most Relevant</option>
-          <option>Salary: High to Low</option>
-        </select>
-      </div>
+      {!loading && !error && (
+        <div className="flex justify-between items-center mb-6">
+          <p className="text-gray-600">
+            Showing <span className="font-semibold">{jobs.length}</span> jobs
+            {totalPages > 1 && (
+              <span> • Page <span className="font-semibold">{page}</span> of{' '}
+              <span className="font-semibold">{totalPages}</span></span>
+            )}
+          </p>
+          <select className="border border-gray-300 rounded-lg px-3 py-2 text-sm">
+            <option>Most Recent</option>
+            <option>Most Relevant</option>
+            <option>Salary: High to Low</option>
+          </select>
+        </div>
+      )}
       
       {/* Job Listings */}
       {jobs.length > 0 ? (
@@ -190,7 +214,7 @@ const JobsPage: React.FC = () => {
             <div className="flex justify-center items-center gap-2 mt-12">
               <button
                 onClick={() => handlePageChange(page - 1)}
-                disabled={page === 1}
+                disabled={page === 1 || loading}
                 className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Previous
@@ -211,11 +235,12 @@ const JobsPage: React.FC = () => {
                     <button
                       key={pageNum}
                       onClick={() => handlePageChange(pageNum)}
+                      disabled={loading}
                       className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                         page === pageNum
                           ? 'bg-blue-600 text-white'
                           : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
-                      }`}
+                      } disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
                       {pageNum}
                     </button>
@@ -224,7 +249,7 @@ const JobsPage: React.FC = () => {
               </div>
               <button
                 onClick={() => handlePageChange(page + 1)}
-                disabled={page === totalPages}
+                disabled={page === totalPages || loading}
                 className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Next
@@ -232,7 +257,7 @@ const JobsPage: React.FC = () => {
             </div>
           )}
         </>
-      ) : !loading && (
+      ) : !loading && !error && (
         <div className="text-center py-12">
           <div className="bg-gray-100 p-8 rounded-xl max-w-md mx-auto">
             <Search className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -245,7 +270,7 @@ const JobsPage: React.FC = () => {
       )}
       
       {/* Loading More */}
-      {loading && jobs.length > 0 && (
+      {loading && !initialLoad && (
         <div className="text-center mt-12">
           <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
         </div>
