@@ -5,7 +5,7 @@ services:
     env: static
     region: oregon
     plan: free
-    buildCommand: npm install --no-frozen-lockfile && npm run build
+    buildCommand: npm install && npm run build
     staticPublishPath: dist
     envVars:
       - key: VITE_API_URL
@@ -22,7 +22,7 @@ services:
     region: oregon
     plan: free
     rootDir: backend
-    buildCommand: npm install --no-frozen-lockfile && npm run build
+    buildCommand: npm install && npm run build
     startCommand: npm start
     envVars:
       - key: NODE_VERSION
