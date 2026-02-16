@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 
@@ -12,7 +12,7 @@ app.use(cors());
 app.use(express.json());
 
 // Health check endpoint
-app.get('/health', (req, res) => {
+app.get('/health', (req: Request, res: Response) => {
   res.json({ 
     status: 'ok', 
     timestamp: new Date().toISOString(),
@@ -21,7 +21,7 @@ app.get('/health', (req, res) => {
 });
 
 // Jobs search endpoint
-app.get('/api/jobs', (req, res) => {
+app.get('/api/jobs', (req: Request, res: Response) => {
   res.json({ 
     jobs: [],
     total: 0,
@@ -31,7 +31,7 @@ app.get('/api/jobs', (req, res) => {
 });
 
 // Main endpoint
-app.get('/', (req, res) => {
+app.get('/', (req: Request, res: Response) => {
   res.json({ 
     message: 'JobBoard API Server is running', 
     port: PORT,
