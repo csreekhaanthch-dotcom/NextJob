@@ -1,109 +1,102 @@
-# JobDone - Zero-Cost Job Board Aggregator
+# Job Board Aggregator
 
-A production-ready job board aggregator that scrapes public job listings and provides personalized recommendations.
+A modern job board aggregator that fetches job listings from multiple sources using the JSearch RapidAPI.
 
-## 🚀 Deployment & Monitoring Report
+## Deployment to Render
 
-### Infrastructure Components
+This application is configured for deployment to Render.com with both frontend and backend services.
 
-- **Frontend**: Cloudflare Pages (https://jobdone-frontend.pages.dev)
-- **Backend**: Fly.io (https://jobdone-api.fly.dev)
-- **Database**: Supabase Postgres
-- **Storage**: Supabase Storage (`resumes` bucket)
+### Prerequisites
 
-### 🔧 Deployment Status
+1. A Render account (https://render.com)
+2. A RapidAPI account with JSearch API access (https://rapidapi.com/justin-WWMXsD28xVZ/api/jsearch)
 
-✅ **Frontend**: Successfully deployed to Cloudflare Pages  
-✅ **Backend**: Successfully deployed to Fly.io  
-✅ **Database**: Supabase configured with RLS  
-✅ **Storage**: Private `resumes` bucket created  
+### Deployment Steps
 
-### 🛡️ Security Configuration
+1. Fork this repository to your GitHub account
+2. Sign in to Render and connect your GitHub account
+3. Create a new Blueprint deployment:
+   - Click "New+" → "Blueprint"
+   - Select your forked repository
+   - Render will automatically detect the `render.yaml` file
 
-- **RLS Policies**: Enabled on all sensitive tables
-- **Helmet.js**: Security headers configured
-- **CORS**: Restricted to frontend domain only
-- **Rate Limiting**: Applied to all endpoints
-- **Input Validation**: Enforced on all uploads
+4. Configure environment variables:
+   - Go to the newly created web service for the backend
+   - In the "Environment" section, add your `RAPIDAPI_KEY`
+   - The frontend will automatically use the backend URL
 
-### ⚡ Performance Metrics
+5. Update the frontend API URL:
+   - In the `render.yaml` file, replace `<REPLACE_WITH_YOUR_RENDER_USERNAME>` with your Render username
+   - Or update the `VITE_API_URL` environment variable in the Render dashboard after deployment
 
-| Metric | Average | 95th Percentile | 99th Percentile |
-|--------|---------|----------------|-----------------|
-| API Response Time | 42ms | 98ms | 156ms |
-| DB Query Latency | 12ms | 28ms | 45ms |
-| Matching Engine | 85ms | 195ms | 385ms |
-| Feed Generation | 65ms | 145ms | 267ms |
+### Manual Deployment (Alternative)
 
-### 📊 Monitoring & Alerting
+If you prefer to deploy services individually:
 
-- **Metrics Collection**: Real-time performance tracking
-- **Alert Thresholds**:
-  - API avg >100ms
-  - DB query avg >25ms
-  - Matching engine >50ms
-  - Feed latency >100ms
-  - Resume upload failure >1%
-- **Notification Channels**: Email, Discord, Slack (configurable)
+#### Backend Deployment
+1. In Render, click "New+" → "Web Service"
+2. Connect to your repository
+3. Set:
+   - Name: `jobboard-backend`
+   - Root Directory: `server`
+   - Runtime: Node
+   - Build Command: `npm install`
+   - Start Command: `node server.js`
+4. Add environment variables:
+   - `RAPIDAPI_KEY` = your RapidAPI key
+   - `PORT` = 10000 (or let Render use default)
 
-### 📈 Auto-Scaling Configuration
+#### Frontend Deployment
+1. In Render, click "New+" → "Static Site"
+2. Connect to your repository
+3. Set:
+   - Name: `jobboard-frontend`
+   - Build Command: `npm install && npm run build`
+   - Publish Directory: `dist`
+4. Add environment variables:
+   - `VITE_API_URL` = URL of your backend service (e.g., `https://jobboard-backend-<random>.onrender.com`)
 
-- **Scale Up Triggers**:
-  - API >100ms for 5 min
-  - CPU >60% for 5 min
-- **Scale Down Triggers**:
-  - CPU <30% for 10 min
-  - API <100ms
-- **Instance Limits**: Min 1, Max constrained to zero-cost limits
+### Environment Variables
 
-### 🔄 Performance Optimizations
+Backend:
+- `RAPIDAPI_KEY` (required): Your RapidAPI key for JSearch API
+- `PORT` (optional): Port to run the server on (defaults to 10000)
 
-- **Caching**: Trending jobs cached for 30 minutes
-- **Vector Calculations**: Cached user interest vectors
-- **Database**: Materialized views for analytics
-- **Frontend**: Search debouncing (300ms)
+Frontend:
+- `VITE_API_URL` (required): URL of your backend API
 
-### 📋 Module Verification Status
+### Development
 
-✅ **Database Schema**: Complete with all tables and indexes  
-✅ **Supabase Storage**: Resume uploads/downloads functional  
-✅ **Recruiter System**: Role-based access implemented  
-✅ **Security Measures**: All critical protections in place  
-✅ **Performance Fixes**: N+1 queries resolved  
+To run locally:
 
-### 🎯 Overall Readiness Score: 92/100
-
-### ✅ Deployment Recommendation: READY FOR PRODUCTION
-
-The JobDone application is fully deployed and monitored with:
-- Automated scaling based on load
-- Comprehensive alerting system
-- Performance optimizations
-- Security hardening
-- Zero-cost compliance maintained
-
-## 🚀 Quick Start
-
-1. **Environment Setup**:
+1. Backend:
    ```bash
-   export SUPABASE_URL=your_supabase_url
-   export SUPABASE_SERVICE_KEY=your_service_key
+   cd server
+   npm install
+   # Create .env file with your RAPIDAPI_KEY
+   npm run dev
    ```
 
-2. **Deploy**:
+2. Frontend:
    ```bash
-   ./deploy.sh
+   npm install
+   npm run dev
    ```
 
-3. **Monitor**:
-   - Health Check: `GET /health`
-   - Metrics: `GET /health/metrics`
+### How It Works
 
-## 🛠️ Development
+The application uses the JSearch RapidAPI to fetch job listings from multiple job boards including:
+- LinkedIn
+- Indeed
+- Glassdoor
+- ZipRecruiter
+- And many more
 
-```bash
-# Frontend
-cd frontend && npm run dev
+The backend acts as a proxy to the JSearch API, normalizing the data and providing a consistent interface for the frontend.
 
-# Backend
-cd backend && npm run dev
+### Support
+
+For issues with:
+- Deployment: Check Render documentation at https://render.com/docs
+- JSearch API: Visit https://rapidapi.com/justin-WWMXsD28xVZ/api/jsearch
+- Application code: Open an issue on this repository

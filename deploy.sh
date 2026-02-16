@@ -1,54 +1,24 @@
 #!/bin/bash
 
-# JobDone Deployment Script
-echo "🚀 Starting JobDone Deployment..."
+echo "🚀 Deploying Job Board Aggregator to Render"
 
-# Check prerequisites
-echo "🔍 Checking prerequisites..."
-if ! command -v git &> /dev/null; then
-    echo "❌ Git is not installed"
-    exit 1
-fi
-
-if ! command -v npm &> /dev/null; then
-    echo "❌ npm is not installed"
-    exit 1
-fi
-
-# Check environment variables
-echo "🔐 Checking environment variables..."
-REQUIRED_VARS=("SUPABASE_URL" "SUPABASE_SERVICE_KEY")
-for var in "${REQUIRED_VARS[@]}"; do
-    if [ -z "${!var}" ]; then
-        echo "❌ Environment variable $var is not set"
-        exit 1
-    fi
-done
-
-echo "✅ All prerequisites met"
-
-# Build frontend
-echo "🏗️  Building frontend..."
-cd frontend
+echo "📦 Building frontend..."
 npm install
 npm run build
-cd ..
 
-# Deploy frontend to Cloudflare Pages would happen via GitHub Actions
-
-# Build backend
-echo "🏗️  Building backend..."
-cd backend
+echo "📦 Installing backend dependencies..."
+cd server
 npm install
-npm run build
-cd ..
 
-# Deploy backend to Fly.io
-echo "✈️  Deploying backend to Fly.io..."
-fly deploy
-
-echo "✅ Deployment completed!"
+echo "✅ Ready for Render deployment!"
 echo ""
-echo "Frontend will be deployed via GitHub Actions"
-echo "Backend URL: https://jobdone-api.fly.dev"
-echo "Health Check: https://jobdone-api.fly.dev/health"
+echo "To deploy to Render:"
+echo "1. Push this code to your GitHub repository"
+echo "2. Go to https://dashboard.render.com/"
+echo "3. Create a new Blueprint deployment"
+echo "4. Select your repository"
+echo "5. Add your RAPIDAPI_KEY as an environment variable"
+echo ""
+echo "Alternatively, deploy services individually:"
+echo "- Backend: Deploy as Web Service with root directory 'server'"
+echo "- Frontend: Deploy as Static Site with build command 'npm install && npm run build'"
