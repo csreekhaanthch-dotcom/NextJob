@@ -1,4 +1,4 @@
-import pdfParse from 'pdf-parse';
+const pdfParse = require('pdf-parse');
 import mammoth from 'mammoth';
 
 class ResumeParser {
@@ -23,11 +23,11 @@ class ResumeParser {
    */
   private async parsePdf(buffer: Buffer): Promise<string> {
     try {
-      // @ts-ignore: pdfParse typing issue
       const data = await pdfParse(buffer);
       return data.text;
     } catch (error) {
-      throw new Error(`Failed to parse PDF: ${error}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to parse PDF: ${errorMessage}`);
     }
   }
 
@@ -39,7 +39,8 @@ class ResumeParser {
       const result = await mammoth.extractRawText({ buffer });
       return result.value;
     } catch (error) {
-      throw new Error(`Failed to parse DOCX: ${error}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to parse DOCX: ${errorMessage}`);
     }
   }
 

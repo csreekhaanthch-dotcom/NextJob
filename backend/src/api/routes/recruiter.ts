@@ -10,15 +10,16 @@ const router = express.Router();
  * POST /match-candidates
  * Match job description to candidates (recruiter only)
  */
-router.post('/match-candidates', requireRecruiter, async (req: AuthRequest, res) => {
+router.post('/match-candidates', requireRecruiter, async (req: AuthRequest, res): Promise<void> => {
   try {
     const { jobId, jobDescription, jobTitle, jobLocation, limit } = req.body;
     
     // Validate required parameters
     if (!jobId || !jobDescription || !jobTitle || !jobLocation) {
-      return res.status(400).json({ 
+      res.status(400).json({ 
         error: 'jobId, jobDescription, jobTitle, and jobLocation are required' 
       });
+      return;
     }
     
     const startTime = Date.now();
@@ -50,10 +51,11 @@ router.post('/match-candidates', requireRecruiter, async (req: AuthRequest, res)
  * GET /dashboard
  * Get recruiter dashboard data (recruiter only)
  */
-router.get('/dashboard', requireRecruiter, async (req: AuthRequest, res) => {
+router.get('/dashboard', requireRecruiter, async (req: AuthRequest, res): Promise<void> => {
   try {
     if (!req.user) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
     }
     
     // Get recruiter ID from user ID
@@ -62,7 +64,8 @@ router.get('/dashboard', requireRecruiter, async (req: AuthRequest, res) => {
     const recruiterResult = recruiterStmt.get(req.user.id) as { id: string } | undefined;
     
     if (!recruiterResult) {
-      return res.status(403).json({ error: 'Not registered as recruiter' });
+      res.status(403).json({ error: 'Not registered as recruiter' });
+      return;
     }
     
     const startTime = Date.now();

@@ -9,13 +9,14 @@ const router = express.Router();
  * GET /feed
  * Get personalized job feed for user
  */
-router.get('/feed', async (req, res) => {
+router.get('/feed', async (req, res): Promise<void> => {
   try {
     const { userId, location, limit } = req.query;
     
     // Validate required parameters
     if (!userId || typeof userId !== 'string') {
-      return res.status(400).json({ error: 'userId is required' });
+      res.status(400).json({ error: 'userId is required' });
+      return;
     }
     
     const startTime = Date.now();
@@ -55,23 +56,25 @@ router.get('/feed', async (req, res) => {
  * POST /interaction
  * Record user interaction with a job
  */
-router.post('/interaction', async (req, res) => {
+router.post('/interaction', async (req, res): Promise<void> => {
   try {
     const { userId, jobId, interactionType } = req.body;
     
     // Validate required parameters
     if (!userId || !jobId || !interactionType) {
-      return res.status(400).json({ 
+      res.status(400).json({ 
         error: 'userId, jobId, and interactionType are required' 
       });
+      return;
     }
     
     // Validate interaction type
     const validInteractions = ['view', 'click', 'save', 'apply'];
     if (!validInteractions.includes(interactionType as string)) {
-      return res.status(400).json({ 
+      res.status(400).json({ 
         error: `Invalid interactionType. Must be one of: ${validInteractions.join(', ')}` 
       });
+      return;
     }
     
     const startTime = Date.now();
@@ -97,12 +100,12 @@ router.post('/interaction', async (req, res) => {
  * GET /user-interests/:userId
  * Get user's interest vector
  */
-router.get('/user-interests/:userId', async (req, res) => {
+router.get('/user-interests/:userId', async (req, res): Promise<void> => {
   try {
     const { userId } = req.params;
-    
+
     const startTime = Date.now();
-    
+
     // Get user's resume text if available
     let resumeText: string | undefined;
     try {
@@ -111,12 +114,12 @@ router.get('/user-interests/:userId', async (req, res) => {
       // Continue without resume if not available
       console.warn(`Could not retrieve resume for user ${userId}:`, error);
     }
-    
+
     // Build interest vector
     const interestVector = await userInterestEngine.buildInterestVector(userId, resumeText);
-    
+
     const duration = Date.now() - startTime;
-    
+
     res.status(200).json({
       interest_vector: interestVector,
       performance: {
@@ -126,6 +129,7 @@ router.get('/user-interests/:userId', async (req, res) => {
   } catch (error) {
     console.error('User interests error:', error);
     res.status(500).json({ error: 'Internal server error during interest calculation' });
+    return;
   }
 });
 
