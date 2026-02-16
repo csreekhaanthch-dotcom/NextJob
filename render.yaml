@@ -29,7 +29,7 @@ services:
     staticPublishPath: dist
     envVars:
       - key: VITE_API_URL
-        value: https://jobboard-backend-onrender.onrender.com
+        value: https://jobboard-backend-YOUR-SERVICE-ID.onrender.com
     routes:
       - type: rewrite
         source: /*
