@@ -1,0 +1,32 @@
+name: Fix PNPM lockfile
+on:
+  workflow_dispatch:
+
+jobs:
+  update-lockfile:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+          cache: "pnpm"
+
+      - name: Install PNPM
+        run: npm install -g pnpm
+
+      - name: Install dependencies and update lockfile
+        working-directory: frontend
+        run: |
+          pnpm install --lockfile-only --no-frozen-lockfile
+
+      - name: Commit updated pnpm-lock.yaml
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add frontend/pnpm-lock.yaml
+          git commit -m "Update pnpm-lock.yaml to match package.json" || echo "No changes to commit"
+          git push
