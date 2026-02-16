@@ -9,7 +9,7 @@ const HealthCheck: React.FC = () => {
     const checkHealth = async () => {
       try {
         const health = await api.checkHealth();
-        if (health.status === 'healthy') {
+        if (health.status === 'ok') {
           setStatus('healthy');
           setMessage('Backend is running and healthy');
         } else {
@@ -74,7 +74,7 @@ const HealthCheck: React.FC = () => {
             {message}
           </p>
           <p className="text-sm text-red-700 mt-1">
-            Please make sure the backend server is running at {import.meta.env.VITE_API_URL || 'http://localhost:3001'}
+            Please make sure the backend server is running at {import.meta.env.VITE_API_URL || 'https://jobdone-api.fly.dev'}
           </p>
         </div>
       </div>

@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || '';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://jobdone-api.fly.dev';
 
 export interface Job {
   id: string;
@@ -62,17 +62,29 @@ class ApiService {
     if (params.page) urlParams.append('page', String(params.page));
     if (params.limit) urlParams.append('limit', String(params.limit));
 
-    const response = await fetch(`${this.baseUrl}/api/jobs?${urlParams}`);
+    const response = await fetch(`${this.baseUrl}/api/jobs?${urlParams}`, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
     return this.handleResponse(response);
   }
 
   async getJob(id: string): Promise<Job> {
-    const response = await fetch(`${this.baseUrl}/api/jobs/${id}`);
+    const response = await fetch(`${this.baseUrl}/api/jobs/${id}`, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
     return this.handleResponse(response);
   }
 
   async checkHealth(): Promise<any> {
-    const response = await fetch(`${this.baseUrl}/health`);
+    const response = await fetch(`${this.baseUrl}/health`, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
     return this.handleResponse(response);
   }
 }
