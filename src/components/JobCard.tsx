@@ -1,5 +1,5 @@
 import React from 'react';
-import { MapPin, Building, Calendar } from 'lucide-react';
+import { MapPin, Building, Calendar, DollarSign } from 'lucide-react';
 
 interface Job {
   id: number;
@@ -20,14 +20,19 @@ interface JobCardProps {
 
 const JobCard: React.FC<JobCardProps> = ({ job }) => {
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden job-card transition-all duration-200">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden job-card transition-all duration-200 hover:shadow-md">
       <div className="p-6">
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center">
             <img 
               src={job.logo} 
               alt={`${job.company} logo`} 
-              className="w-12 h-12 rounded-lg object-contain mr-4"
+              className="w-12 h-12 rounded-lg object-contain mr-4 border border-gray-200"
+              onError={(e) => {
+                // Set a fallback image if the logo fails to load
+                const target = e.target as HTMLImageElement;
+                target.src = 'https://placehold.co/60x60/cccccc/ffffff?text=Logo';
+              }}
             />
             <div>
               <h3 className="font-bold text-lg text-gray-900">{job.title}</h3>
@@ -37,7 +42,7 @@ const JobCard: React.FC<JobCardProps> = ({ job }) => {
               </p>
             </div>
           </div>
-          <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
+          <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full whitespace-nowrap">
             {job.type}
           </span>
         </div>
@@ -51,6 +56,10 @@ const JobCard: React.FC<JobCardProps> = ({ job }) => {
             <Calendar className="h-4 w-4 mr-1" />
             {job.posted}
           </div>
+          <div className="flex items-center text-gray-500 text-sm">
+            <DollarSign className="h-4 w-4 mr-1" />
+            {job.salary}
+          </div>
         </div>
         
         <p className="text-gray-600 text-sm mb-4 line-clamp-2">
@@ -61,7 +70,7 @@ const JobCard: React.FC<JobCardProps> = ({ job }) => {
           {job.tags.map((tag, index) => (
             <span 
               key={index} 
-              className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded"
+              className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full"
             >
               {tag}
             </span>
@@ -69,9 +78,11 @@ const JobCard: React.FC<JobCardProps> = ({ job }) => {
         </div>
         
         <div className="flex justify-between items-center">
-          <span className="font-bold text-blue-600">{job.salary}</span>
           <button className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors">
-            Apply
+            Apply Now
+          </button>
+          <button className="px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">
+            Save Job
           </button>
         </div>
       </div>

@@ -1,128 +1,131 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Search, MapPin, Building, Calendar, Filter } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, MapPin, Filter } from 'lucide-react';
 import JobCard from '@/components/JobCard';
-import JobFilters from '@/components/JobFilters';
 
-// Mock data for demonstration
-const mockJobs = [
-  {
-    id: 1,
-    title: "Senior Frontend Developer",
-    company: "TechCorp Inc.",
-    location: "San Francisco, CA",
-    salary: "$120k - $150k",
-    type: "Full-time",
-    posted: "2 days ago",
-    description: "We're looking for an experienced frontend developer to join our team...",
-    tags: ["React", "TypeScript", "Tailwind"],
-    logo: "https://placehold.co/60x60"
-  },
-  {
-    id: 2,
-    title: "Product Manager",
-    company: "StartupXYZ",
-    location: "Remote",
-    salary: "$130k - $160k",
-    type: "Full-time",
-    posted: "1 week ago",
-    description: "Join our product team to drive innovation and growth...",
-    tags: ["Product Strategy", "Analytics", "Agile"],
-    logo: "https://placehold.co/60x60"
-  },
-  {
-    id: 3,
-    title: "UX Designer",
-    company: "DesignStudio",
-    location: "New York, NY",
-    salary: "$90k - $120k",
-    type: "Full-time",
-    posted: "3 days ago",
-    description: "Create beautiful and intuitive user experiences for our products...",
-    tags: ["Figma", "Prototyping", "Research"],
-    logo: "https://placehold.co/60x60"
-  },
-  {
-    id: 4,
-    title: "Backend Engineer",
-    company: "DataSystems",
-    location: "Austin, TX",
-    salary: "$110k - $140k",
-    type: "Full-time",
-    posted: "5 days ago",
-    description: "Build scalable backend systems for our data platform...",
-    tags: ["Node.js", "Python", "AWS"],
-    logo: "https://placehold.co/60x60"
-  },
-  {
-    id: 5,
-    title: "DevOps Specialist",
-    company: "CloudTech",
-    location: "Remote",
-    salary: "$100k - $130k",
-    type: "Contract",
-    posted: "1 day ago",
-    description: "Implement and maintain our cloud infrastructure...",
-    tags: ["Kubernetes", "Docker", "CI/CD"],
-    logo: "https://placehold.co/60x60"
-  },
-  {
-    id: 6,
-    title: "Marketing Intern",
-    company: "GrowthCo",
-    location: "Los Angeles, CA",
-    salary: "$20/hr",
-    type: "Internship",
-    posted: "4 days ago",
-    description: "Support our marketing team with campaigns and analytics...",
-    tags: ["Social Media", "Content", "Analytics"],
-    logo: "https://placehold.co/60x60"
-  }
-];
+interface Job {
+  id: number;
+  title: string;
+  company: string;
+  location: string;
+  salary: string;
+  type: string;
+  posted: string;
+  description: string;
+  tags: string[];
+  logo: string;
+}
 
 const JobsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [locationFilter, setLocationFilter] = useState('');
   const [jobTypeFilter, setJobTypeFilter] = useState('');
-  const [filteredJobs, setFilteredJobs] = useState(mockJobs);
-  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
-
-  // Debounce search term
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearchTerm(searchTerm);
-    }, 300);
-
-    return () => {
-      clearTimeout(timer);
-    };
-  }, [searchTerm]);
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // In a real app, this would fetch from an API
-    let results = mockJobs;
-    
-    if (debouncedSearchTerm) {
-      results = results.filter(job => 
-        job.title.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-        job.company.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-        job.tags.some(tag => tag.toLowerCase().includes(debouncedSearchTerm.toLowerCase()))
-      );
+    fetchJobs();
+  }, []);
+
+  const fetchJobs = async () => {
+    try {
+      setLoading(true);
+      // In a real app, this would fetch from your backend API
+      // const response = await fetch(`${import.meta.env.VITE_API_URL}/jobs`);
+      // const data = await response.json();
+      
+      // For now, using mock data to demonstrate the structure
+      const mockJobs = [
+        {
+          id: 1,
+          title: "Senior Frontend Developer",
+          company: "TechCorp Inc.",
+          location: "San Francisco, CA",
+          salary: "$120k - $150k",
+          type: "Full-time",
+          posted: "2 days ago",
+          description: "We're looking for an experienced frontend developer to join our team...",
+          tags: ["React", "TypeScript", "Tailwind"],
+          logo: "https://placehold.co/60x60"
+        },
+        {
+          id: 2,
+          title: "Product Manager",
+          company: "StartupXYZ",
+          location: "Remote",
+          salary: "$130k - $160k",
+          type: "Full-time",
+          posted: "1 week ago",
+          description: "Join our product team to drive innovation and growth...",
+          tags: ["Product Strategy", "Analytics", "Agile"],
+          logo: "https://placehold.co/60x60"
+        },
+        {
+          id: 3,
+          title: "UX Designer",
+          company: "DesignStudio",
+          location: "New York, NY",
+          salary: "$90k - $120k",
+          type: "Full-time",
+          posted: "3 days ago",
+          description: "Create beautiful and intuitive user experiences for our products...",
+          tags: ["Figma", "Prototyping", "Research"],
+          logo: "https://placehold.co/60x60"
+        }
+      ];
+      
+      setJobs(mockJobs);
+      setLoading(false);
+    } catch (err) {
+      setError('Failed to fetch jobs');
+      setLoading(false);
     }
+  };
+
+  const filteredJobs = jobs.filter(job => {
+    const matchesSearch = searchTerm === '' || 
+      job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      job.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      job.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
     
-    if (locationFilter) {
-      results = results.filter(job => 
-        job.location.toLowerCase().includes(locationFilter.toLowerCase())
-      );
-    }
+    const matchesLocation = locationFilter === '' || 
+      job.location.toLowerCase().includes(locationFilter.toLowerCase());
     
-    if (jobTypeFilter) {
-      results = results.filter(job => 
-        job.type.toLowerCase().includes(jobTypeFilter.toLowerCase())
-      );
-    }
+    const matchesType = jobTypeFilter === '' || 
+      job.type.toLowerCase().includes(jobTypeFilter.toLowerCase());
     
-    setFilteredJobs(results);
-  }, [debouncedSearchTerm, locationFilter, jobTypeFilter]);
+    return matchesSearch && matchesLocation && matchesType;
+  });
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center py-12">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
+          <p className="text-gray-600">Loading jobs...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center py-12">
+          <div className="bg-red-50 p-8 rounded-xl max-w-md mx-auto">
+            <h3 className="text-xl font-semibold text-red-800 mb-2">Error Loading Jobs</h3>
+            <p className="text-red-600">{error}</p>
+            <button 
+              onClick={fetchJobs}
+              className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -179,13 +182,13 @@ const JobsPage: React.FC = () => {
         </div>
         
         <div className="mt-4 flex flex-wrap gap-2">
-          <button className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
+          <button className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium hover:bg-blue-200 transition-colors">
             Remote
           </button>
-          <button className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
+          <button className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium hover:bg-blue-200 transition-colors">
             Entry Level
           </button>
-          <button className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
+          <button className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium hover:bg-blue-200 transition-colors">
             $100k+
           </button>
         </div>
@@ -204,22 +207,13 @@ const JobsPage: React.FC = () => {
       </div>
       
       {/* Job Listings */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredJobs.map(job => (
-          <JobCard key={job.id} job={job} />
-        ))}
-      </div>
-      
-      {/* Load More */}
-      {filteredJobs.length > 0 && (
-        <div className="text-center mt-12">
-          <button className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors">
-            Load More Jobs
-          </button>
+      {filteredJobs.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredJobs.map(job => (
+            <JobCard key={job.id} job={job} />
+          ))}
         </div>
-      )}
-      
-      {filteredJobs.length === 0 && (
+      ) : (
         <div className="text-center py-12">
           <div className="bg-gray-100 p-8 rounded-xl max-w-md mx-auto">
             <Search className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -228,6 +222,15 @@ const JobsPage: React.FC = () => {
               Try adjusting your search criteria or filters to find more opportunities
             </p>
           </div>
+        </div>
+      )}
+      
+      {/* Load More */}
+      {filteredJobs.length > 0 && (
+        <div className="text-center mt-12">
+          <button className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors">
+            Load More Jobs
+          </button>
         </div>
       )}
     </div>
