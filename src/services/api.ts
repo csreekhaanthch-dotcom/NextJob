@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://nextjob-cnah.onrender.com';
+const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
 export interface Job {
   id: string;
@@ -62,12 +62,12 @@ class ApiService {
     if (params.page) urlParams.append('page', String(params.page));
     if (params.limit) urlParams.append('limit', String(params.limit));
 
-    const response = await fetch(`${this.baseUrl}/jobs?${urlParams}`);
+    const response = await fetch(`${this.baseUrl}/api/jobs?${urlParams}`);
     return this.handleResponse(response);
   }
 
   async getJob(id: string): Promise<Job> {
-    const response = await fetch(`${this.baseUrl}/jobs/${id}`);
+    const response = await fetch(`${this.baseUrl}/api/jobs/${id}`);
     return this.handleResponse(response);
   }
 

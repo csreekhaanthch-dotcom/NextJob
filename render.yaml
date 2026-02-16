@@ -6,7 +6,7 @@ services:
     region: oregon
     plan: free
     buildCommand: cd server && npm install
-    startCommand: cd server && npm start
+    startCommand: cd server && node server.js
     envVars:
       - key: NODE_VERSION
         value: 18
@@ -19,7 +19,6 @@ services:
       - key: NODE_ENV
         value: production
     healthCheckPath: /health
-    autoDeploy: true
 
   # Frontend Static Site
   - type: web
@@ -30,9 +29,8 @@ services:
     staticPublishPath: dist
     envVars:
       - key: VITE_API_URL
-        value: https://jobboard-backend-<YOUR-RENDER-USERNAME>.onrender.com
+        value: /api
     routes:
       - type: rewrite
         source: /*
         destination: /index.html
-    autoDeploy: true
