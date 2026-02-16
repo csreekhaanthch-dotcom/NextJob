@@ -3,27 +3,11 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
 import axios from 'axios';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-// Get the directory name
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-
-// CORS configuration for your frontend
-const corsOptions = {
-  origin: [
-    'http://localhost:3000',
-    'https://nextjob-frontend.onrender.com'
-  ],
-  credentials: true,
-  optionsSuccessStatus: 200
-};
 
 // Rate limiting
 const limiter = rateLimit({
@@ -33,7 +17,7 @@ const limiter = rateLimit({
 });
 
 app.use(limiter);
-app.use(cors(corsOptions));
+app.use(cors());
 app.use(express.json());
 
 // Health check
@@ -174,16 +158,6 @@ app.get('/api/jobs/:id', async (req, res) => {
     });
   }
 });
-
-// Serve static files in production
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../dist')));
-  
-  // Handle client-side routing
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../dist', 'index.html'));
-  });
-}
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Job search server running on port ${PORT}`);
