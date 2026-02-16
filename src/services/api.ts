@@ -1,4 +1,5 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://jobboard-backend-onrender.onrender.com';
+// Use the environment variable or fall back to a default
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 export interface Job {
   id: string;
