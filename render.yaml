@@ -5,7 +5,7 @@ services:
     env: static
     region: oregon
     plan: free
-    buildCommand: npm install && npm run build
+    buildCommand: npm ci && npm run build
     staticPublishPath: dist
     envVars:
       - key: VITE_API_URL
@@ -21,8 +21,7 @@ services:
     env: node
     region: oregon
     plan: free
-    # rootDir was incorrectly set to "frontend", but should be "backend" or omitted for root
-    buildCommand: cd backend && npm install && npm run build
+    buildCommand: cd backend && npm ci && npm run build
     startCommand: cd backend && npm start
     envVars:
       - key: NODE_VERSION
