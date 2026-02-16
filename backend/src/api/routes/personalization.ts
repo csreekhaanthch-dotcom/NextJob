@@ -1,3 +1,6 @@
+function sanitizeInput(input: string): string {
+  return input.replace(/[<>]/g, "");
+}
 import express from 'express';
 import { personalizationService } from '../../services/personalizationService';
 import { userInterestEngine } from '../../core/userInterestEngine';
