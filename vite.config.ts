@@ -22,5 +22,7 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: true,
-  }
+  },
+  // Add this for proper asset handling
+  base: './'
 });

@@ -6,7 +6,7 @@ services:
     region: oregon
     plan: free
     buildCommand: cd server && npm install
-    startCommand: cd server && node server.js
+    startCommand: cd server && npm start
     envVars:
       - key: NODE_VERSION
         value: 18
@@ -16,6 +16,8 @@ services:
         sync: false
       - key: RAPIDAPI_HOST
         value: jsearch.p.rapidapi.com
+      - key: NODE_ENV
+        value: production
     healthCheckPath: /health
     autoDeploy: true
 
@@ -25,10 +27,10 @@ services:
     env: static
     region: oregon
     buildCommand: npm install && npm run build
-    staticPublishPath: ./dist
+    staticPublishPath: dist
     envVars:
       - key: VITE_API_URL
-        value: https://nextjob-cnah.onrender.com
+        value: https://jobboard-backend-<YOUR-RENDER-USERNAME>.onrender.com
     routes:
       - type: rewrite
         source: /*

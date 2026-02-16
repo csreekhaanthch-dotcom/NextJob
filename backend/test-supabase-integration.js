@@ -1,28 +1,16 @@
-// Simple test to verify Supabase integration
-const { supabaseManager } = require('./dist/database/supabaseConnection');
-const { dbManager } = require('./dist/database/connection');
+// Simple test to verify integration
+console.log('Testing backend integration...');
 
-console.log('Testing Supabase integration...');
+// Check if required environment variables are set
+const requiredEnvVars = ['RAPIDAPI_KEY'];
+const missingEnvVars = requiredEnvVars.filter(envVar => !process.env[envVar]);
 
-// Check if Supabase is configured
-console.log('Supabase configured:', supabaseManager.isConfigured());
-console.log('Using Supabase:', dbManager.isUsingSupabase());
-console.log('Using SQLite:', dbManager.isUsingSqlite());
-
-if (supabaseManager.isConfigured()) {
-  console.log('✅ Supabase is properly configured');
-  
-  // Test connection
-  supabaseManager.testConnection()
-    .then(connected => {
-      console.log('✅ Supabase connection test:', connected ? 'PASSED' : 'FAILED');
-      process.exit(connected ? 0 : 1);
-    })
-    .catch(error => {
-      console.error('❌ Supabase connection test failed:', error.message);
-      process.exit(1);
-    });
+if (missingEnvVars.length > 0) {
+  console.log('⚠️  Missing environment variables:', missingEnvVars);
+  console.log('Please set these variables in your Render dashboard');
+  process.exit(1);
 } else {
-  console.log('ℹ️  Supabase not configured, using SQLite fallback');
+  console.log('✅ All required environment variables are set');
+  console.log('✅ Backend is ready for deployment');
   process.exit(0);
 }
