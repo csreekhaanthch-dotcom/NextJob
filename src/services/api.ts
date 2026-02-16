@@ -25,14 +25,40 @@ export interface SearchJobsResponse {
   totalPages: number;
 }
 
-export const api = {
-  searchJobs: async (params: { 
+class ApiService {
+  private baseUrl: string;
+
+  constructor(baseUrl: string) {
+    this.baseUrl = baseUrl;
+  }
+
+  private async handleResponse(response: Response) {
+    if (!response.ok) {
+      const errorText = await response.text();
+      let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+      
+      try {
+        const errorJson = JSON.parse(errorText);
+        errorMessage = errorJson.error || errorJson.message || errorMessage;
+      } catch (e) {
+        // If parsing fails, use the raw text
+        if (errorText) {
+          errorMessage = errorText;
+        }
+      }
+      
+      throw new Error(errorMessage);
+    }
+    return response.json();
+  }
+
+  async searchJobs(params: { 
     keyword?: string; 
     location?: string; 
     remote?: boolean; 
     page?: number; 
     limit?: number 
-  }): Promise<SearchJobsResponse> => {
+  }): Promise<SearchJobsResponse> {
     const urlParams = new URLSearchParams();
     
     if (params.keyword) urlParams.append('keyword', params.keyword);
@@ -41,43 +67,27 @@ export const api = {
     if (params.page) urlParams.append('page', String(params.page));
     if (params.limit) urlParams.append('limit', String(params.limit));
 
-    const response = await fetch(`${API_BASE_URL}/jobs?${urlParams}`);
-    
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Failed to fetch jobs');
-    }
-    
-    return response.json();
-  },
+    const response = await fetch(`${this.baseUrl}/jobs?${urlParams}`);
+    return this.handleResponse(response);
+  }
 
-  getJob: async (id: string): Promise<Job> => {
-    const response = await fetch(`${API_BASE_URL}/jobs/${id}`);
-    
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Failed to fetch job');
-    }
-    
-    return response.json();
-  },
+  async getJob(id: string): Promise<Job> {
+    const response = await fetch(`${this.baseUrl}/jobs/${id}`);
+    return this.handleResponse(response);
+  }
 
-  uploadResume: async (formData: FormData): Promise<any> => {
-    const response = await fetch(`${API_BASE_URL}/match`, {
+  async uploadResume(formData: FormData): Promise<any> {
+    const response = await fetch(`${this.baseUrl}/match`, {
       method: 'POST',
       body: formData,
     });
-    
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Failed to upload resume');
-    }
-    
-    return response.json();
-  },
-
-  checkHealth: async () => {
-    const response = await fetch(`${API_BASE_URL}/health`);
-    return response.json();
+    return this.handleResponse(response);
   }
-};
+
+  async checkHealth(): Promise<any> {
+    const response = await fetch(`${this.baseUrl}/health`);
+    return this.handleResponse(response);
+  }
+}
+
+export const api = new ApiService(API_BASE_URL);
