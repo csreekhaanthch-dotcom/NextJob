@@ -21,9 +21,9 @@ services:
     env: node
     region: oregon
     plan: free
-    rootDir: backend
-    buildCommand: npm install && npm run build
-    startCommand: npm start
+    # rootDir was incorrectly set to "frontend", but should be "backend" or omitted for root
+    buildCommand: cd backend && npm install && npm run build
+    startCommand: cd backend && npm start
     envVars:
       - key: NODE_VERSION
         value: 20
