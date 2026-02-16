@@ -42,7 +42,8 @@ app.get('/health', (req, res) => {
     status: 'ok', 
     timestamp: new Date().toISOString(),
     rapidapi_configured: !!process.env.RAPIDAPI_KEY,
-    service: 'jobboard-backend'
+    service: 'jobboard-backend',
+    supabase_configured: !!process.env.SUPABASE_URL
   });
 });
 
@@ -185,6 +186,14 @@ app.listen(PORT, () => {
   if (!process.env.RAPIDAPI_KEY) {
     console.warn('⚠️  RAPIDAPI_KEY not set in environment variables!');
     console.warn('   Please add your RapidAPI key to server/.env file');
+  }
+  
+  // Initialize database connection
+  console.log('Database configuration:');
+  if (process.env.SUPABASE_URL) {
+    console.log('✅ Supabase configured');
+  } else {
+    console.log('ℹ️  Using SQLite (no Supabase configuration found)');
   }
 });
 
