@@ -1,5 +1,5 @@
 services:
-  # Backend API Service
+  # Backend API Service (runs from server directory)
   - type: web
     name: jobboard-backend
     env: node
@@ -17,7 +17,7 @@ services:
         sync: false
     healthCheckPath: /health
 
-  # Frontend Static Site
+  # Frontend Static Site (runs from root)
   - type: web
     name: jobboard-frontend
     env: static
