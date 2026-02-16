@@ -1,5 +1,5 @@
 import React from 'react';
-import { MapPin, Building, Calendar, DollarSign, Globe } from 'lucide-react';
+import { MapPin, Building, Calendar, Globe } from 'lucide-react';
 
 export interface Job {
   id: string;

@@ -159,6 +159,19 @@ app.get('/api/jobs/:id', async (req, res) => {
   }
 });
 
+// Simple root endpoint to confirm server is running
+app.get('/', (req, res) => {
+  res.json({ 
+    message: 'JobBoard API Server is running', 
+    endpoints: [
+      'GET /health - Health check',
+      'GET /api/jobs - Search jobs',
+      'GET /api/jobs/:id - Get job by ID'
+    ]
+  });
+});
+
+// Start server
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Job search server running on port ${PORT}`);
   console.log(`Health check: http://localhost:${PORT}/health`);
