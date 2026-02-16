@@ -1,7 +1,7 @@
 services:
   # Frontend Static Site
   - type: web
-    name: jobboard-frontend
+    name: nextjob-frontend
     env: static
     region: oregon
     plan: free
@@ -9,7 +9,7 @@ services:
     staticPublishPath: dist
     envVars:
       - key: VITE_API_URL
-        value: https://jobboard-backend-<REPLACE_WITH_YOUR_RENDER_USERNAME>.onrender.com
+        value: https://nextjob-backend-cnah.onrender.com
     routes:
       - type: rewrite
         source: /*
@@ -17,7 +17,7 @@ services:
   
   # Backend API Service
   - type: web
-    name: jobboard-backend
+    name: nextjob-backend
     env: node
     region: oregon
     plan: free
