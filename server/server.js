@@ -32,26 +32,6 @@ app.get('/', (req, res) => {
   });
 });
 
-// Jobs search endpoint
-app.get('/api/jobs', async (req, res) => {
-  try {
-    // Check if RapidAPI key is configured
-    if (!process.env.RAPIDAPI_KEY) {
-      return res.status(500).json({ 
-        error: 'RAPIDAPI_KEY not configured',
-        message: 'Please add your RapidAPI key to server/.env file'
-      });
-    }
-
-    res.json({ 
-      message: 'API ready - Add your RAPIDAPI_KEY to server/.env',
-      query: req.query
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
 // Start server
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on http://localhost:${PORT}`);
