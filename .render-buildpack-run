@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Render buildpack run script
+
+echo "Running pre-build setup..."
+
+# Run cleanup script
+./scripts/cleanup.sh
+
+echo "Pre-build setup completed!"
