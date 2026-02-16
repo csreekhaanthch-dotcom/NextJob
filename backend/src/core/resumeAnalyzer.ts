@@ -1,3 +1,7 @@
+function escapeRegex(input: string): string {
+  return input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 import { tokenizer } from './tokenizer';
 import { skillExtractor } from './skillExtractor';
 
