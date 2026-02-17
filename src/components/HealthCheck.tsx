@@ -4,24 +4,62 @@ import { api } from '@/services/api';
 const HealthCheck: React.FC = () => {
   const [status, setStatus] = useState<'checking' | 'healthy' | 'error'>('checking');
   const [message, setMessage] = useState('');
+  const [details, setDetails] = useState<string[]>([]);
 
   useEffect(() => {
+    let isMounted = true;
+    
     const checkHealth = async () => {
+      const newDetails: string[] = [];
+      newDetails.push(`Checking at: ${new Date().toLocaleTimeString()}`);
+      
       try {
-        const health = await api.checkHealth();
-        if (health.status === 'ok') {
-          setStatus('healthy');
-          setMessage('Backend is running and healthy');
-        } else {
-          setStatus('error');
-          setMessage('Backend is running but unhealthy');
+        // Test basic connectivity first
+        newDetails.push('Testing connectivity to backend...');
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+        
+        const response = await fetch('http://localhost:3001/health', {
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        
+        newDetails.push(`Received response: ${response.status} ${response.statusText}`);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const health = await response.json();
+        newDetails.push(`Backend status: ${health.status}`);
+        
+        if (isMounted) {
+          if (health.status === 'ok') {
+            setStatus('healthy');
+            setMessage('Backend is running and healthy');
+          } else {
+            setStatus('error');
+            setMessage('Backend is running but unhealthy');
+          }
+          setDetails(newDetails);
         }
       } catch (error) {
-        setStatus('error');
-        if (error instanceof Error) {
-          setMessage(`Backend connectivity issue: ${error.message}`);
-        } else {
-          setMessage('Backend is not reachable. Please ensure the backend server is running.');
+        if (isMounted) {
+          setStatus('error');
+          setDetails([...details, ...newDetails]);
+          
+          if (error instanceof Error) {
+            if (error.name === 'AbortError') {
+              setMessage('Backend connection timed out (took longer than 5 seconds)');
+              setDetails(prev => [...prev, 'Request timed out - backend may be slow to start']);
+            } else {
+              setMessage(`Backend connectivity issue: ${error.message}`);
+              setDetails(prev => [...prev, `Error details: ${error.message}`]);
+            }
+          } else {
+            setMessage('Backend is not reachable. Please ensure the backend server is running.');
+            setDetails(prev => [...prev, 'Unknown error occurred']);
+          }
         }
       }
     };
@@ -31,9 +69,15 @@ const HealthCheck: React.FC = () => {
       checkHealth();
     } else {
       // In production, assume backend is handled by Render
-      setStatus('healthy');
-      setMessage('Application is running in production mode');
+      if (isMounted) {
+        setStatus('healthy');
+        setMessage('Application is running in production mode');
+      }
     }
+    
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // Don't show health check in production
@@ -90,11 +134,22 @@ const HealthCheck: React.FC = () => {
             {message}
           </p>
           <p className="text-sm text-red-700 mt-1">
-            Please make sure the backend server is running at {import.meta.env.VITE_API_URL || 'http://localhost:3001'}
+            Please make sure the backend server is running at http://localhost:3001
           </p>
           <p className="text-sm text-red-700 mt-1">
-            Try running: <code className="bg-gray-100 px-1 rounded">cd backend && npm run dev</code>
+            Try running: <code className="bg-gray-100 px-1 rounded">cd backend && npm install && npm run dev</code>
           </p>
+          
+          {details.length > 0 && (
+            <details className="mt-2">
+              <summary className="text-sm text-red-700 cursor-pointer">Diagnostic details</summary>
+              <ul className="mt-1 text-xs text-red-600 bg-red-100 p-2 rounded">
+                {details.map((detail, index) => (
+                  <li key={index} className="mb-1 last:mb-0">• {detail}</li>
+                ))}
+              </ul>
+            </details>
+          )}
         </div>
       </div>
     </div>
