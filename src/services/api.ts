@@ -12,6 +12,7 @@ export interface Job {
   salary?: string;
   tags?: string[];
   logo?: string;
+  company_domain?: string;
 }
 
 export interface SearchJobsResponse {
@@ -62,11 +63,15 @@ class ApiService {
     if (params.page) urlParams.append('page', String(params.page));
     if (params.limit) urlParams.append('limit', String(params.limit));
 
+    console.log('Making request to:', `${this.baseUrl}/api/jobs?${urlParams}`);
+    
     const response = await fetch(`${this.baseUrl}/api/jobs?${urlParams}`, {
       headers: {
         'Content-Type': 'application/json',
       },
     });
+    
+    console.log('Response status:', response.status);
     return this.handleResponse(response);
   }
 
