@@ -1,12 +1,22 @@
 // Minimal working backend for NextJob
 import express from 'express';
-import cors from 'cors';
+import cors from 'crosorigin';
 
 const app = express();
-const PORT = 3001;
+const PORT = parseInt(process.env.PORT || '3001', 10);
 
-// Enable CORS for all origins
-app.use(cors());
+// Enable CORS for all origins in development, specific origins in production
+if (process.env.NODE_ENV === 'production') {
+  // In production, only allow requests from the frontend domain
+  app.use(cors({
+    origin: process.env.FRONTEND_URL || 'https://your-frontend.onrender.com',
+    credentials: true
+  }));
+} else {
+  // In development, allow all origins
+  app.use(cors());
+}
+
 app.use(express.json());
 
 // Health check endpoint
@@ -23,7 +33,8 @@ app.get('/health', (req, res) => {
 app.get('/', (req, res) => {
   res.json({ 
     message: 'NextJob API Server is running',
-    port: PORT
+    port: PORT,
+    environment: process.env.NODE_ENV || 'development'
   });
 });
 
