@@ -46,7 +46,8 @@ const JobsPage: React.FC = () => {
     fetchJobs();
   }, [fetchJobs]);
 
-  const handleSearch = () => {
+  const handleSearch = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     setPage(1);
     fetchJobs();
   };
@@ -66,6 +67,40 @@ const JobsPage: React.FC = () => {
   const handlePageChange = (newPage: number) => {
     setPage(newPage);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Handle clearing individual filters
+  const clearSearchTerm = () => {
+    setSearchTerm('');
+    setTimeout(() => {
+      setPage(1);
+      fetchJobs();
+    }, 0);
+  };
+
+  const clearLocationFilter = () => {
+    setLocationFilter('');
+    setTimeout(() => {
+      setPage(1);
+      fetchJobs();
+    }, 0);
+  };
+
+  const clearJobTypeFilter = () => {
+    setJobTypeFilter('');
+    setTimeout(() => {
+      setPage(1);
+      fetchJobs();
+    }, 0);
+  };
+
+  const toggleRemoteFilter = () => {
+    const newRemoteFilter = !remoteFilter;
+    setRemoteFilter(newRemoteFilter);
+    setTimeout(() => {
+      setPage(1);
+      fetchJobs();
+    }, 0);
   };
 
   if (initialLoad && loading) {
@@ -93,7 +128,7 @@ const JobsPage: React.FC = () => {
       </div>
 
       {/* Search and Filters */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
+      <form onSubmit={handleSearch} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
           <div className="md:col-span-5 relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -105,7 +140,6 @@ const JobsPage: React.FC = () => {
               className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
             />
           </div>
           
@@ -119,12 +153,12 @@ const JobsPage: React.FC = () => {
               className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               value={locationFilter}
               onChange={(e) => setLocationFilter(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
             />
           </div>
           
           <div className="md:col-span-3 flex gap-2">
             <button
+              type="button"
               className={`flex-1 px-4 py-3 border rounded-lg flex items-center justify-center gap-2 ${
                 isFiltersOpen 
                   ? 'bg-blue-50 text-blue-600 border-blue-200' 
@@ -137,8 +171,8 @@ const JobsPage: React.FC = () => {
             </button>
             
             <button
+              type="submit"
               className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex items-center justify-center gap-2"
-              onClick={handleSearch}
               disabled={loading}
             >
               {loading ? (
@@ -159,7 +193,13 @@ const JobsPage: React.FC = () => {
                 <select
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
                   value={jobTypeFilter}
-                  onChange={(e) => setJobTypeFilter(e.target.value)}
+                  onChange={(e) => {
+                    setJobTypeFilter(e.target.value);
+                    setTimeout(() => {
+                      setPage(1);
+                      fetchJobs();
+                    }, 0);
+                  }}
                 >
                   <option value="">All Types</option>
                   <option value="full-time">Full-time</option>
@@ -171,7 +211,16 @@ const JobsPage: React.FC = () => {
               
               <div className="flex-1 min-w-[200px]">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Experience Level</label>
-                <select className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                <select 
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                  onChange={(e) => {
+                    // Trigger search when experience level changes
+                    setTimeout(() => {
+                      setPage(1);
+                      fetchJobs();
+                    }, 0);
+                  }}
+                >
                   <option>Any Experience</option>
                   <option>Entry Level</option>
                   <option>Mid Level</option>
@@ -181,7 +230,16 @@ const JobsPage: React.FC = () => {
               
               <div className="flex-1 min-w-[200px]">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Salary Range</label>
-                <select className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                <select 
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                  onChange={(e) => {
+                    // Trigger search when salary range changes
+                    setTimeout(() => {
+                      setPage(1);
+                      fetchJobs();
+                    }, 0);
+                  }}
+                >
                   <option>Any Salary</option>
                   <option>$50k - $80k</option>
                   <option>$80k - $120k</option>
@@ -192,12 +250,13 @@ const JobsPage: React.FC = () => {
               
               <div className="flex items-end">
                 <button
+                  type="button"
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                     remoteFilter
                       ? 'bg-blue-600 text-white'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
-                  onClick={() => setRemoteFilter(!remoteFilter)}
+                  onClick={toggleRemoteFilter}
                 >
                   {remoteFilter ? 'Remote Only' : 'Remote Available'}
                 </button>
@@ -206,6 +265,7 @@ const JobsPage: React.FC = () => {
             
             <div className="mt-4 flex justify-end">
               <button
+                type="button"
                 className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800"
                 onClick={resetFilters}
               >
@@ -221,8 +281,9 @@ const JobsPage: React.FC = () => {
               <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800">
                 Keyword: {searchTerm}
                 <button 
+                  type="button"
                   className="ml-2 hover:bg-blue-200 rounded-full p-1"
-                  onClick={() => setSearchTerm('')}
+                  onClick={clearSearchTerm}
                 >
                   ×
                 </button>
@@ -233,8 +294,9 @@ const JobsPage: React.FC = () => {
               <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-green-100 text-green-800">
                 Location: {locationFilter}
                 <button 
+                  type="button"
                   className="ml-2 hover:bg-green-200 rounded-full p-1"
-                  onClick={() => setLocationFilter('')}
+                  onClick={clearLocationFilter}
                 >
                   ×
                 </button>
@@ -245,8 +307,9 @@ const JobsPage: React.FC = () => {
               <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-purple-100 text-purple-800">
                 Type: {jobTypeFilter}
                 <button 
+                  type="button"
                   className="ml-2 hover:bg-purple-200 rounded-full p-1"
-                  onClick={() => setJobTypeFilter('')}
+                  onClick={clearJobTypeFilter}
                 >
                   ×
                 </button>
@@ -257,8 +320,9 @@ const JobsPage: React.FC = () => {
               <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-indigo-100 text-indigo-800">
                 Remote Only
                 <button 
+                  type="button"
                   className="ml-2 hover:bg-indigo-200 rounded-full p-1"
-                  onClick={() => setRemoteFilter(false)}
+                  onClick={toggleRemoteFilter}
                 >
                   ×
                 </button>
@@ -266,7 +330,7 @@ const JobsPage: React.FC = () => {
             )}
           </div>
         )}
-      </div>
+      </form>
 
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
@@ -276,6 +340,7 @@ const JobsPage: React.FC = () => {
               <p className="text-red-800 font-medium">Error loading jobs</p>
               <p className="text-red-700 text-sm mt-1">{error}</p>
               <button
+                type="button"
                 className="mt-2 px-3 py-1 bg-red-100 text-red-700 rounded text-sm hover:bg-red-200 flex items-center"
                 onClick={handleRetry}
               >
@@ -297,7 +362,13 @@ const JobsPage: React.FC = () => {
             )}
           </p>
           <div className="flex gap-2">
-            <select className="border border-gray-300 rounded-lg px-3 py-2 text-sm">
+            <select 
+              className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+              onChange={(e) => {
+                // Handle sort order changes
+                console.log('Sort order changed to:', e.target.value);
+              }}
+            >
               <option>Most Recent</option>
               <option>Most Relevant</option>
               <option>Salary: High to Low</option>
@@ -310,7 +381,7 @@ const JobsPage: React.FC = () => {
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {jobs.map(job => (
-              <JobCard key={job.id} job={job as any} />
+              <JobCard key={job.id} job={job} />
             ))}
           </div>
           
@@ -321,6 +392,7 @@ const JobsPage: React.FC = () => {
               </div>
               <div className="flex items-center gap-2">
                 <button
+                  type="button"
                   className={`px-3 py-1 rounded ${
                     page === 1 
                       ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
@@ -337,6 +409,7 @@ const JobsPage: React.FC = () => {
                     const pageNum = i + 1;
                     return (
                       <button
+                        type="button"
                         key={pageNum}
                         className={`w-8 h-8 rounded-full mx-1 ${
                           page === pageNum
@@ -352,6 +425,7 @@ const JobsPage: React.FC = () => {
                 </div>
                 
                 <button
+                  type="button"
                   className={`px-3 py-1 rounded ${
                     page === totalPages 
                       ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
@@ -375,6 +449,7 @@ const JobsPage: React.FC = () => {
               Try adjusting your search criteria or filters to find more opportunities
             </p>
             <button
+              type="button"
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
               onClick={resetFilters}
             >

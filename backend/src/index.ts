@@ -17,7 +17,7 @@ console.log('- RAPIDAPI_KEY configured:', !!process.env.RAPIDAPI_KEY);
 if (process.env.NODE_ENV === 'production') {
   // In production, only allow requests from the frontend domain
   const corsOptions = {
-    origin: process.env.FRONTEND_URL || 'https://nextjob-frontend.onrender.com',
+    origin: process.env.FRONTEND_URL || 'https://your-frontend.onrender.com',
     credentials: true
   };
   console.log('Production CORS enabled for origin:', corsOptions.origin);
@@ -76,6 +76,21 @@ app.get('/api/jobs', async (req, res) => {
     // Add remote filter if specified
     if (req.query.remote === 'true') {
       queryParams.append('remote_jobs_only', 'true');
+    }
+    
+    // Add employment types based on job type filter
+    if (req.query.jobType) {
+      const employmentTypes: Record<string, string> = {
+        'full-time': 'FULLTIME',
+        'part-time': 'PARTTIME',
+        'contract': 'CONTRACTOR',
+        'internship': 'INTERN'
+      };
+      
+      const jsearchType = employmentTypes[req.query.jobType as string];
+      if (jsearchType) {
+        queryParams.append('job_types', jsearchType);
+      }
     }
     
     // Set defaults if no parameters provided
