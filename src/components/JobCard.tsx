@@ -1,5 +1,5 @@
 import React from 'react';
-import { MapPin, Building, Calendar, Globe } from 'lucide-react';
+import { MapPin, Building, Calendar, Globe, DollarSign } from 'lucide-react';
 
 export interface Job {
   id: string;
@@ -56,14 +56,14 @@ const JobCard: React.FC<JobCardProps> = ({ job }) => {
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden job-card transition-all duration-200 hover:shadow-md">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden job-card transition-all duration-200 hover:shadow-md hover:border-blue-200">
       <div className="p-6">
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex items-center">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between mb-4 gap-4">
+          <div className="flex items-start">
             <img 
               src={logoUrl}
               alt={`${job.company} logo`} 
-              className="w-12 h-12 rounded-lg object-contain mr-4 border border-gray-200"
+              className="w-12 h-12 rounded-lg object-contain mr-4 border border-gray-200 flex-shrink-0"
               onError={(e) => {
                 // Set a fallback image if the logo fails to load
                 const target = e.target as HTMLImageElement;
@@ -73,35 +73,41 @@ const JobCard: React.FC<JobCardProps> = ({ job }) => {
             <div>
               <h3 className="font-bold text-lg text-gray-900 line-clamp-2">{job.title}</h3>
               <p className="text-gray-600 flex items-center mt-1">
-                <Building className="h-4 w-4 mr-1" />
+                <Building className="h-4 w-4 mr-1 flex-shrink-0" />
                 {job.company}
               </p>
             </div>
           </div>
-          <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
+          <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full whitespace-nowrap">
             {jobType}
           </span>
         </div>
         
-        <div className="flex flex-wrap gap-2 mb-4">
+        <div className="flex flex-wrap gap-3 mb-4">
           <div className="flex items-center text-gray-500 text-sm">
-            <MapPin className="h-4 w-4 mr-1" />
-            {job.location}
+            <MapPin className="h-4 w-4 mr-1 flex-shrink-0" />
+            <span className="truncate">{job.location}</span>
           </div>
           {job.remote && (
             <div className="flex items-center text-gray-500 text-sm">
-              <Globe className="h-4 w-4 mr-1" />
+              <Globe className="h-4 w-4 mr-1 flex-shrink-0" />
               Remote
             </div>
           )}
           <div className="flex items-center text-gray-500 text-sm">
-            <Calendar className="h-4 w-4 mr-1" />
+            <Calendar className="h-4 w-4 mr-1 flex-shrink-0" />
             {formatPostedDate(job.posted_date)}
           </div>
+          {job.salary && (
+            <div className="flex items-center text-gray-500 text-sm">
+              <DollarSign className="h-4 w-4 mr-1 flex-shrink-0" />
+              {job.salary}
+            </div>
+          )}
         </div>
         
         {job.description && (
-          <p className="text-gray-600 text-sm mb-4 line-clamp-2">
+          <p className="text-gray-600 text-sm mb-4 line-clamp-3">
             {job.description}
           </p>
         )}
@@ -111,26 +117,26 @@ const JobCard: React.FC<JobCardProps> = ({ job }) => {
             {job.tags.slice(0, 5).map((tag, index) => (
               <span 
                 key={index} 
-                className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded"
+                className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full"
               >
                 {tag}
               </span>
             ))}
             {job.tags.length > 5 && (
-              <span className="px-2 py-1 bg-gray-100 text-gray-500 text-xs rounded">
+              <span className="px-2 py-1 bg-gray-100 text-gray-500 text-xs rounded-full">
                 +{job.tags.length - 5} more
               </span>
             )}
           </div>
         )}
         
-        <div className="flex justify-between items-center">
-          {job.salary && (
-            <span className="font-bold text-blue-600">{job.salary}</span>
-          )}
+        <div className="flex justify-between items-center pt-2">
+          <div className="text-xs text-gray-500">
+            via {job.source}
+          </div>
           <button 
             onClick={handleApply}
-            className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+            className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors whitespace-nowrap"
           >
             View Details
           </button>
