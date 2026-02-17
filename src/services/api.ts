@@ -80,12 +80,17 @@ class ApiService {
   }
 
   async checkHealth(): Promise<any> {
-    const response = await fetch(`${this.baseUrl}/health`, {
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-    return this.handleResponse(response);
+    try {
+      const response = await fetch(`${this.baseUrl}/health`, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      return this.handleResponse(response);
+    } catch (error) {
+      // Return a specific error message when backend is unreachable
+      throw new Error('Unable to connect to the backend server. Please ensure the backend is running.');
+    }
   }
 }
 
