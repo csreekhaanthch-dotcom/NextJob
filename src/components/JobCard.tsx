@@ -4,14 +4,14 @@ import { MapPin, Building, Calendar, Globe, DollarSign } from 'lucide-react';
 export interface Job {
   id: string;
   title: string;
-  title_normalized: string;
+  title_normalized?: string;
   company: string;
-  company_domain: string;
+  company_domain?: string;
   location: string;
-  location_normalized: string;
-  remote: boolean;
+  location_normalized?: string;
+  remote?: boolean;
   posted_date: number;
-  source: string;
+  source?: string;
   job_url: string;
   description?: string;
   salary?: string;
@@ -39,7 +39,9 @@ const JobCard: React.FC<JobCardProps> = ({ job }) => {
   };
 
   // Generate a placeholder logo URL
-  const logoUrl = `https://logo.clearbit.com/${job.company_domain || job.company.toLowerCase().replace(/\s+/g, '')}.com`;
+  const logoUrl = job.company_domain 
+    ? `https://logo.clearbit.com/${job.company_domain}`
+    : `https://logo.clearbit.com/${job.company.toLowerCase().replace(/\s+/g, '')}.com`;
 
   // Determine job type from description/tags if available
   const getJobType = (): string => {
@@ -132,7 +134,7 @@ const JobCard: React.FC<JobCardProps> = ({ job }) => {
         
         <div className="flex justify-between items-center pt-2">
           <div className="text-xs text-gray-500">
-            via {job.source}
+            via {job.source || 'Unknown'}
           </div>
           <button 
             onClick={handleApply}
