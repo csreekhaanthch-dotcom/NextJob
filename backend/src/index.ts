@@ -45,3 +45,8 @@ app.get('/', (req: Request, res: Response) => {
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
 });
+
+// Also listen on localhost for local development
+app.listen(PORT, 'localhost', () => {
+  console.log(`Server also accessible at http://localhost:${PORT}`);
+});
