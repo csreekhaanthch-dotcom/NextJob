@@ -17,6 +17,7 @@ const JobsPage: React.FC = () => {
   const [initialLoad, setInitialLoad] = useState(true);
 
   const fetchJobs = useCallback(async () => {
+    console.log('Fetching jobs with params:', { searchTerm, locationFilter, remoteFilter, page });
     setLoading(true);
     setError(null);
     
@@ -29,10 +30,12 @@ const JobsPage: React.FC = () => {
         limit: 12
       });
       
+      console.log('Jobs fetched successfully:', response);
       setJobs(response.jobs);
       setTotalPages(response.totalPages);
       setInitialLoad(false);
     } catch (err) {
+      console.error('Error fetching jobs:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch jobs');
     } finally {
       setLoading(false);

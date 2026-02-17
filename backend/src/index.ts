@@ -8,15 +8,23 @@ dotenv.config();
 const app = express();
 const PORT = parseInt(process.env.PORT || '3001', 10);
 
+console.log('Starting backend server with configuration:');
+console.log('- PORT:', PORT);
+console.log('- NODE_ENV:', process.env.NODE_ENV);
+console.log('- RAPIDAPI_KEY configured:', !!process.env.RAPIDAPI_KEY);
+
 // Enable CORS for all origins in development, specific origins in production
 if (process.env.NODE_ENV === 'production') {
   // In production, only allow requests from the frontend domain
-  app.use(cors({
+  const corsOptions = {
     origin: process.env.FRONTEND_URL || 'https://your-frontend.onrender.com',
     credentials: true
-  }));
+  };
+  console.log('Production CORS enabled for origin:', corsOptions.origin);
+  app.use(cors(corsOptions));
 } else {
   // In development, allow all origins
+  console.log('Development CORS enabled (all origins allowed)');
   app.use(cors());
 }
 
@@ -24,7 +32,7 @@ app.use(express.json());
 
 // Health check endpoint
 app.get('/health', (req, res) => {
-  console.log('Health check requested');
+  console.log('Health check requested from IP:', req.ip);
   res.json({ 
     status: 'ok', 
     timestamp: new Date().toISOString(),
@@ -34,6 +42,7 @@ app.get('/health', (req, res) => {
 
 // Root endpoint
 app.get('/', (req, res) => {
+  console.log('Root endpoint requested from IP:', req.ip);
   res.json({ 
     message: 'NextJob API Server is running',
     port: PORT,
@@ -131,12 +140,13 @@ app.get('/api/jobs', async (req, res) => {
 
 // Error handling middleware
 app.use((err: any, req: any, res: any, next: any) => {
-  console.error(err.stack);
+  console.error('Unhandled error:', err.stack);
   res.status(500).json({ error: 'Something went wrong!' });
 });
 
 // 404 handler
 app.use((req, res) => {
+  console.log('404 Not Found for URL:', req.url);
   res.status(404).json({ error: 'Not found' });
 });
 
@@ -144,6 +154,8 @@ app.use((req, res) => {
 const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`NextJob backend server listening at http://0.0.0.0:${PORT}`);
   console.log(`Health check available at http://0.0.0.0:${PORT}/health`);
+}).on('error', (error) => {
+  console.error('Server failed to start:', error);
 });
 
 // Handle server startup errors

@@ -30,8 +30,11 @@ class ApiService {
   }
 
   private async handleResponse(response: Response) {
+    console.log('API response received:', response.status, response.statusText);
+    
     if (!response.ok) {
       const errorText = await response.text();
+      console.error('API error response:', errorText);
       let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
       
       try {
@@ -63,16 +66,25 @@ class ApiService {
     if (params.page) urlParams.append('page', String(params.page));
     if (params.limit) urlParams.append('limit', String(params.limit));
 
-    console.log('Making request to:', `${this.baseUrl}/api/jobs?${urlParams}`);
+    const url = `${this.baseUrl}/api/jobs?${urlParams}`;
+    console.log('Making request to:', url);
     
-    const response = await fetch(`${this.baseUrl}/api/jobs?${urlParams}`, {
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-    
-    console.log('Response status:', response.status);
-    return this.handleResponse(response);
+    try {
+      const response = await fetch(url, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      console.log('Fetch response status:', response.status);
+      return this.handleResponse(response);
+    } catch (error) {
+      console.error('Fetch error:', error);
+      if (error instanceof TypeError && error.message === 'Failed to fetch') {
+        throw new Error('Unable to connect to the backend server. Please ensure the backend is running and accessible.');
+      }
+      throw error;
+    }
   }
 
   async getJob(id: string): Promise<Job> {

@@ -11,6 +11,7 @@ const HealthCheck: React.FC = () => {
       try {
         // Use the same API base URL as the main service
         const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+        console.log('Checking health at:', `${baseUrl}/health`);
         const response = await fetch(`${baseUrl}/health`);
         if (response.ok) {
           if (isMounted) {
@@ -21,6 +22,7 @@ const HealthCheck: React.FC = () => {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
       } catch (error) {
+        console.error('Health check error:', error);
         if (isMounted) {
           setStatus('error');
           if (error instanceof Error) {
