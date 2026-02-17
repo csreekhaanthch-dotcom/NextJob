@@ -11,7 +11,8 @@ const PORT = parseInt(process.env.PORT || '3001', 10);
 console.log('Starting backend server with configuration:');
 console.log('- PORT:', PORT);
 console.log('- NODE_ENV:', process.env.NODE_ENV);
-console.log('- RAPIDAPI_KEY configured:', !!process.env.RAPIDAPI_KEY);
+console.log('- ADZUNA_APP_ID configured:', !!process.env.ADZUNA_APP_ID);
+console.log('- ADZUNA_APP_KEY configured:', !!process.env.ADZUNA_APP_KEY);
 
 // Enable CORS for all origins in development, specific origins in production
 if (process.env.NODE_ENV === 'production') {
@@ -50,99 +51,98 @@ app.get('/', (req, res) => {
   });
 });
 
-// JSearch API integration for jobs
+// Adzuna API integration for jobs
 app.get('/api/jobs', async (req, res) => {
   try {
-    console.log('Fetching jobs from JSearch API with params:', req.query);
+    console.log('Fetching jobs from Adzuna API with params:', req.query);
     
-    // Check if API key is configured
-    if (!process.env.RAPIDAPI_KEY) {
-      console.error('RAPIDAPI_KEY not configured');
+    // Check if API credentials are configured
+    if (!process.env.ADZUNA_APP_ID || !process.env.ADZUNA_APP_KEY) {
+      console.error('Adzuna API credentials not configured');
       return res.status(500).json({ 
-        error: 'API key not configured', 
-        message: 'RAPIDAPI_KEY environment variable is missing' 
+        error: 'API credentials not configured', 
+        message: 'ADZUNA_APP_ID and ADZUNA_APP_KEY environment variables are missing' 
       });
     }
 
-    // Prepare query parameters
+    // Parse query parameters
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const search = req.query.search as string || 'software';
+    const location = req.query.location as string || 'United States';
+    
+    // Construct Adzuna API URL
+    // Adzuna uses 1-based indexing for pages
+    const apiUrl = `https://api.adzuna.com/v1/api/jobs/us/search/${page-1}`;
+    
+    // Prepare query parameters for Adzuna API
     const queryParams = new URLSearchParams();
+    queryParams.append('app_id', process.env.ADZUNA_APP_ID);
+    queryParams.append('app_key', process.env.ADZUNA_APP_KEY);
+    queryParams.append('results_per_page', limit.toString());
     
-    // Add search parameters if provided
-    if (req.query.keyword) queryParams.append('query', req.query.keyword as string);
-    if (req.query.location) queryParams.append('location', req.query.location as string);
-    if (req.query.page) queryParams.append('page', req.query.page as string);
-    if (req.query.limit) queryParams.append('num_pages', req.query.limit as string);
-    
-    // Add remote filter if specified
-    if (req.query.remote === 'true') {
-      queryParams.append('remote_jobs_only', 'true');
+    // Add search term
+    if (search) {
+      queryParams.append('what', search);
     }
     
-    // Add employment types based on job type filter
-    if (req.query.jobType) {
-      const employmentTypes: Record<string, string> = {
-        'full-time': 'FULLTIME',
-        'part-time': 'PARTTIME',
-        'contract': 'CONTRACTOR',
-        'internship': 'INTERN'
-      };
-      
-      const jsearchType = employmentTypes[req.query.jobType as string];
-      if (jsearchType) {
-        queryParams.append('job_types', jsearchType);
-      }
+    // Add location filter
+    if (location && location !== 'United States') {
+      queryParams.append('where', location);
+    } else {
+      // Default to United States if no specific location
+      queryParams.append('location0', 'United States');
     }
     
-    // Set defaults if no parameters provided
-    if (!req.query.keyword) queryParams.append('query', 'software engineer');
+    // Add content type to get full job descriptions
+    queryParams.append('content-type', 'application/json');
     
-    const apiUrl = `https://jsearch.p.rapidapi.com/search?${queryParams.toString()}`;
-    console.log('Making request to JSearch API:', apiUrl);
+    const fullApiUrl = `${apiUrl}?${queryParams.toString()}`;
+    console.log('Making request to Adzuna API:', fullApiUrl);
 
-    // Make request to JSearch API
-    const response = await fetch(apiUrl, {
+    // Make request to Adzuna API
+    const response = await fetch(fullApiUrl, {
       method: 'GET',
       headers: {
-        'X-RapidAPI-Key': process.env.RAPIDAPI_KEY,
-        'X-RapidAPI-Host': 'jsearch.p.rapidapi.com'
+        'Accept': 'application/json'
       }
     });
 
-    console.log('JSearch API response status:', response.status);
+    console.log('Adzuna API response status:', response.status);
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('JSearch API error response:', errorText);
+      console.error('Adzuna API error response:', errorText);
       return res.status(response.status).json({ 
-        error: 'JSearch API error', 
+        error: 'Adzuna API error', 
         status: response.status,
         message: errorText 
       });
     }
 
     const data = await response.json();
-    console.log('JSearch API response received, jobs count:', data.data?.length || 0);
+    console.log('Adzuna API response received, jobs count:', data.results?.length || 0);
 
-    // Transform JSearch response to our expected format
-    const jobs = data.data?.map((job: any) => ({
-      id: job.job_id,
-      title: job.job_title,
-      company: job.employer_name,
-      location: `${job.job_city || ''}${job.job_state ? `, ${job.job_state}` : ''}${job.job_country ? `, ${job.job_country}` : ''}`.trim() || 'Remote',
-      remote: job.job_is_remote || false,
-      posted_date: Math.floor(new Date(job.job_posted_at_datetime_utc).getTime() / 1000),
-      job_url: job.job_apply_link || job.job_google_link || '#',
-      description: job.job_description || job.job_highlights?.Qualifications?.join(' ') || '',
-      salary: job.job_salary_currency ? `${job.job_salary_currency} ${job.job_salary} ${job.job_salary_period || ''}` : '',
-      tags: [job.job_employment_type, ...(job.job_required_skills || [])].filter(Boolean),
-      company_domain: job.employer_website ? new URL(job.employer_website).hostname : null
+    // Transform Adzuna response to our expected format
+    const jobs = data.results?.map((job: any) => ({
+      id: job.id,
+      title: job.title,
+      company: job.company?.display_name || 'Unknown Company',
+      location: job.location?.display_name || 'Remote',
+      description: job.description || '',
+      url: job.redirect_url || '#',
+      salary: job.salary_min && job.salary_max 
+        ? `$${job.salary_min.toLocaleString()} - $${job.salary_max.toLocaleString()}`
+        : 'Not specified',
+      posted_date: Math.floor(new Date(job.created).getTime() / 1000),
+      tags: job.category?.label ? [job.category.label] : []
     })) || [];
 
     res.json({
       jobs: jobs,
-      total: data.results_total || jobs.length,
-      page: parseInt(req.query.page as string) || 1,
-      totalPages: Math.ceil((data.results_total || jobs.length) / (parseInt(req.query.limit as string) || 10))
+      total: data.count || jobs.length,
+      page: page,
+      totalPages: Math.ceil((data.count || jobs.length) / limit)
     });
   } catch (error) {
     console.error('Error fetching jobs:', error);
