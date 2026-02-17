@@ -1,5 +1,4 @@
-// Use your actual Render backend URL
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://nextjob-cnah.onrender.com';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 export interface Job {
   id: string;
