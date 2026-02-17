@@ -1,32 +1,31 @@
-#!/bin/bash
-# Cleanup script to remove pnpm artifacts and ensure npm usage
+#!/usr/bin/env bash
 
-echo "Starting cleanup process..."
+echo "=== Aggressive Cleanup Script ==="
 
-# Remove pnpm lockfile if it exists
-if [ -f "pnpm-lock.yaml" ]; then
-  echo "Removing pnpm-lock.yaml..."
-  rm pnpm-lock.yaml
-  echo "pnpm-lock.yaml removed"
-fi
+# Remove all pnpm-related files and directories
+echo "Removing pnpm files..."
+find . -name "*pnpm*" -type f -delete 2>/dev/null || true
+find . -name "*pnpm*" -type d -exec rm -rf {} + 2>/dev/null || true
 
-# Remove any pnpm-related files
-if [ -d "node_modules/.pnpm" ]; then
-  echo "Removing pnpm node_modules cache..."
-  rm -rf node_modules/.pnpm
-fi
+# Remove node_modules and let npm rebuild
+echo "Removing node_modules..."
+rm -rf node_modules 2>/dev/null || true
 
-# For backend directory
+# Check backend directory too
 if [ -d "backend" ]; then
-  if [ -f "backend/pnpm-lock.yaml" ]; then
-    echo "Removing backend/pnpm-lock.yaml..."
-    rm backend/pnpm-lock.yaml
-  fi
-  
-  if [ -d "backend/node_modules/.pnpm" ]; then
-    echo "Removing backend pnpm node_modules cache..."
-    rm -rf backend/node_modules/.pnpm
-  fi
+  echo "Cleaning backend directory..."
+  cd backend
+  find . -name "*pnpm*" -type f -delete 2>/dev/null || true
+  find . -name "*pnpm*" -type d -exec rm -rf {} + 2>/dev/null || true
+  rm -rf node_modules 2>/dev/null || true
+  cd ..
 fi
 
-echo "Cleanup completed successfully!"
+# Uninstall pnpm if it's installed globally
+echo "Checking for global pnpm..."
+if command -v pnpm >/dev/null 2>&1; then
+  echo "Uninstalling global pnpm..."
+  npm uninstall -g pnpm 2>/dev/null || true
+fi
+
+echo "Cleanup completed!"
