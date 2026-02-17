@@ -5,14 +5,11 @@ export interface Job {
   title: string;
   company: string;
   location: string;
-  remote: boolean;
-  posted_date: number;
-  job_url: string;
-  description?: string;
+  description: string;
+  url: string;
   salary?: string;
+  posted_date: number;
   tags?: string[];
-  logo?: string;
-  company_domain?: string;
 }
 
 export interface SearchJobsResponse {
@@ -69,17 +66,15 @@ class ApiService {
   }
 
   async searchJobs(params: { 
-    keyword?: string; 
+    search?: string; 
     location?: string; 
-    remote?: boolean; 
     page?: number; 
     limit?: number 
   }): Promise<SearchJobsResponse> {
     const urlParams = new URLSearchParams();
     
-    if (params.keyword) urlParams.append('keyword', params.keyword);
+    if (params.search) urlParams.append('search', params.search);
     if (params.location) urlParams.append('location', params.location);
-    if (params.remote !== undefined) urlParams.append('remote', String(params.remote));
     if (params.page) urlParams.append('page', String(params.page));
     if (params.limit) urlParams.append('limit', String(params.limit));
 

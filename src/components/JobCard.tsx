@@ -1,23 +1,6 @@
 import React from 'react';
 import { MapPin, Building, Calendar, Globe, DollarSign } from 'lucide-react';
-
-export interface Job {
-  id: string;
-  title: string;
-  title_normalized?: string;
-  company: string;
-  company_domain?: string;
-  location: string;
-  location_normalized?: string;
-  remote?: boolean;
-  posted_date: number;
-  source?: string;
-  job_url: string;
-  description?: string;
-  salary?: string;
-  tags?: string[];
-  ranking_score?: number;
-}
+import { Job } from '../services/api';
 
 interface JobCardProps {
   job: Job;
@@ -39,22 +22,10 @@ const JobCard: React.FC<JobCardProps> = ({ job }) => {
   };
 
   // Generate a placeholder logo URL
-  const logoUrl = job.company_domain 
-    ? `https://logo.clearbit.com/${job.company_domain}`
-    : `https://logo.clearbit.com/${job.company.toLowerCase().replace(/\s+/g, '')}.com`;
-
-  // Determine job type from description/tags if available
-  const getJobType = (): string => {
-    if (job.tags?.some(tag => tag.toLowerCase().includes('intern'))) return 'Internship';
-    if (job.tags?.some(tag => tag.toLowerCase().includes('contract') || tag.toLowerCase().includes('freelance'))) return 'Contract';
-    if (job.tags?.some(tag => tag.toLowerCase().includes('part'))) return 'Part-time';
-    return 'Full-time';
-  };
-
-  const jobType = getJobType();
+  const logoUrl = `https://logo.clearbit.com/${job.company.toLowerCase().replace(/\s+/g, '')}.com`;
 
   const handleApply = () => {
-    window.open(job.job_url, '_blank');
+    window.open(job.url, '_blank');
   };
 
   return (
@@ -80,9 +51,6 @@ const JobCard: React.FC<JobCardProps> = ({ job }) => {
               </p>
             </div>
           </div>
-          <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full whitespace-nowrap">
-            {jobType}
-          </span>
         </div>
         
         <div className="flex flex-wrap gap-3 mb-4">
@@ -90,12 +58,6 @@ const JobCard: React.FC<JobCardProps> = ({ job }) => {
             <MapPin className="h-4 w-4 mr-1 flex-shrink-0" />
             <span className="truncate">{job.location}</span>
           </div>
-          {job.remote && (
-            <div className="flex items-center text-gray-500 text-sm">
-              <Globe className="h-4 w-4 mr-1 flex-shrink-0" />
-              Remote
-            </div>
-          )}
           <div className="flex items-center text-gray-500 text-sm">
             <Calendar className="h-4 w-4 mr-1 flex-shrink-0" />
             {formatPostedDate(job.posted_date)}
@@ -110,7 +72,7 @@ const JobCard: React.FC<JobCardProps> = ({ job }) => {
         
         {job.description && (
           <p className="text-gray-600 text-sm mb-4 line-clamp-3">
-            {job.description}
+            {job.description.replace(/<[^>]*>/g, '').substring(0, 200)}...
           </p>
         )}
         
@@ -132,10 +94,7 @@ const JobCard: React.FC<JobCardProps> = ({ job }) => {
           </div>
         )}
         
-        <div className="flex justify-between items-center pt-2">
-          <div className="text-xs text-gray-500">
-            via {job.source || 'Unknown'}
-          </div>
+        <div className="flex justify-end pt-2">
           <button 
             onClick={handleApply}
             className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors whitespace-nowrap"

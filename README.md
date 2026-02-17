@@ -1,6 +1,6 @@
 # Job Board Aggregator
 
-A modern job board aggregator that fetches job listings from multiple sources using the JSearch RapidAPI.
+A modern job board aggregator that fetches job listings from multiple sources using the Adzuna API.
 
 ## Deployment to Render
 
@@ -9,7 +9,7 @@ This application is configured for deployment to Render.com with both frontend a
 ### Prerequisites
 
 1. A Render account (https://render.com)
-2. A RapidAPI account with JSearch API access (https://rapidapi.com/justin-WWMXsD28xVZ/api/jsearch)
+2. An Adzuna account with API access (https://developer.adzuna.com)
 
 ### Deployment Steps
 
@@ -22,13 +22,14 @@ This application is configured for deployment to Render.com with both frontend a
 
 4. Configure environment variables:
    - Go to the newly created web service for the backend
-   - In the "Environment" section, add your `RAPIDAPI_KEY`
+   - In the "Environment" section, add your `ADZUNA_APP_ID` and `ADZUNA_APP_KEY`
    - The frontend will automatically use the backend URL
 
 ### Environment Variables
 
 Backend:
-- `RAPIDAPI_KEY` (required): Your RapidAPI key for JSearch API
+- `ADZUNA_APP_ID` (required): Your Adzuna app ID for API access
+- `ADZUNA_APP_KEY` (required): Your Adzuna app key for API access
 - `PORT` (optional): Port to run the server on (defaults to 10000)
 
 Frontend:
@@ -42,7 +43,7 @@ To run locally:
    ```bash
    cd backend
    npm install
-   # Create .env file with your RAPIDAPI_KEY
+   # Create .env file with your ADZUNA_APP_ID and ADZUNA_APP_KEY
    npm run dev
    ```
 
@@ -56,5 +57,5 @@ To run locally:
 
 For issues with:
 - Deployment: Check Render documentation at https://render.com/docs
-- JSearch API: Visit https://rapidapi.com/justin-WWMXsD28xVZ/api/jsearch
+- Adzuna API: Visit https://developer.adzuna.com
 - Application code: Open an issue on this repository

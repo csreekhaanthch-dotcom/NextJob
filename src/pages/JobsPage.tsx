@@ -7,25 +7,22 @@ const JobsPage: React.FC = () => {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState('software');
   const [locationFilter, setLocationFilter] = useState('');
-  const [jobTypeFilter, setJobTypeFilter] = useState('');
-  const [remoteFilter, setRemoteFilter] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [initialLoad, setInitialLoad] = useState(true);
 
   const fetchJobs = useCallback(async () => {
-    console.log('Fetching jobs with params:', { searchTerm, locationFilter, remoteFilter, page });
+    console.log('Fetching jobs with params:', { searchTerm, locationFilter, page });
     setLoading(true);
     setError(null);
     
     try {
       const response = await api.searchJobs({
-        keyword: searchTerm,
+        search: searchTerm,
         location: locationFilter,
-        remote: remoteFilter,
         page: page,
         limit: 12
       });
@@ -41,7 +38,7 @@ const JobsPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [searchTerm, locationFilter, remoteFilter, page]);
+  }, [searchTerm, locationFilter, page]);
 
   useEffect(() => {
     fetchJobs();
@@ -58,10 +55,8 @@ const JobsPage: React.FC = () => {
   };
 
   const resetFilters = () => {
-    setSearchTerm('');
+    setSearchTerm('software');
     setLocationFilter('');
-    setJobTypeFilter('');
-    setRemoteFilter(false);
     setPage(1);
   };
 
@@ -72,7 +67,7 @@ const JobsPage: React.FC = () => {
 
   // Handle clearing individual filters
   const clearSearchTerm = () => {
-    setSearchTerm('');
+    setSearchTerm('software');
     setTimeout(() => {
       setPage(1);
       fetchJobs();
@@ -81,23 +76,6 @@ const JobsPage: React.FC = () => {
 
   const clearLocationFilter = () => {
     setLocationFilter('');
-    setTimeout(() => {
-      setPage(1);
-      fetchJobs();
-    }, 0);
-  };
-
-  const clearJobTypeFilter = () => {
-    setJobTypeFilter('');
-    setTimeout(() => {
-      setPage(1);
-      fetchJobs();
-    }, 0);
-  };
-
-  const toggleRemoteFilter = () => {
-    const newRemoteFilter = !remoteFilter;
-    setRemoteFilter(newRemoteFilter);
     setTimeout(() => {
       setPage(1);
       fetchJobs();
@@ -188,83 +166,7 @@ const JobsPage: React.FC = () => {
 
         {isFiltersOpen && (
           <div className="mt-6 pt-6 border-t border-gray-200">
-            <div className="flex flex-wrap gap-4">
-              <div className="flex-1 min-w-[200px]">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Job Type</label>
-                <select
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                  value={jobTypeFilter}
-                  onChange={(e) => {
-                    setJobTypeFilter(e.target.value);
-                    setTimeout(() => {
-                      setPage(1);
-                      fetchJobs();
-                    }, 0);
-                  }}
-                >
-                  <option value="">All Types</option>
-                  <option value="full-time">Full-time</option>
-                  <option value="part-time">Part-time</option>
-                  <option value="contract">Contract</option>
-                  <option value="internship">Internship</option>
-                </select>
-              </div>
-              
-              <div className="flex-1 min-w-[200px]">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Experience Level</label>
-                <select 
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                  onChange={() => {
-                    // Trigger search when experience level changes
-                    setTimeout(() => {
-                      setPage(1);
-                      fetchJobs();
-                    }, 0);
-                  }}
-                >
-                  <option>Any Experience</option>
-                  <option>Entry Level</option>
-                  <option>Mid Level</option>
-                  <option>Senior Level</option>
-                </select>
-              </div>
-              
-              <div className="flex-1 min-w-[200px]">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Salary Range</label>
-                <select 
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                  onChange={() => {
-                    // Trigger search when salary range changes
-                    setTimeout(() => {
-                      setPage(1);
-                      fetchJobs();
-                    }, 0);
-                  }}
-                >
-                  <option>Any Salary</option>
-                  <option>$50k - $80k</option>
-                  <option>$80k - $120k</option>
-                  <option>$120k - $150k</option>
-                  <option>$150k+</option>
-                </select>
-              </div>
-              
-              <div className="flex items-end">
-                <button
-                  type="button"
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    remoteFilter
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                  onClick={toggleRemoteFilter}
-                >
-                  {remoteFilter ? 'Remote Only' : 'Remote Available'}
-                </button>
-              </div>
-            </div>
-            
-            <div className="mt-4 flex justify-end">
+            <div className="flex justify-end">
               <button
                 type="button"
                 className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800"
@@ -276,9 +178,9 @@ const JobsPage: React.FC = () => {
           </div>
         )}
 
-        {(searchTerm || locationFilter || jobTypeFilter || remoteFilter) && (
+        {(searchTerm || locationFilter) && (
           <div className="mt-4 flex flex-wrap gap-2">
-            {searchTerm && (
+            {searchTerm && searchTerm !== 'software' && (
               <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800">
                 Keyword: {searchTerm}
                 <button 
@@ -298,32 +200,6 @@ const JobsPage: React.FC = () => {
                   type="button"
                   className="ml-2 hover:bg-green-200 rounded-full p-1"
                   onClick={clearLocationFilter}
-                >
-                  ×
-                </button>
-              </span>
-            )}
-            
-            {jobTypeFilter && (
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-purple-100 text-purple-800">
-                Type: {jobTypeFilter}
-                <button 
-                  type="button"
-                  className="ml-2 hover:bg-purple-200 rounded-full p-1"
-                  onClick={clearJobTypeFilter}
-                >
-                  ×
-                </button>
-              </span>
-            )}
-            
-            {remoteFilter && (
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-indigo-100 text-indigo-800">
-                Remote Only
-                <button 
-                  type="button"
-                  className="ml-2 hover:bg-indigo-200 rounded-full p-1"
-                  onClick={toggleRemoteFilter}
                 >
                   ×
                 </button>
