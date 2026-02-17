@@ -36,7 +36,8 @@ const JobsPage: React.FC = () => {
       setInitialLoad(false);
     } catch (err) {
       console.error('Error fetching jobs:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch jobs');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch jobs';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

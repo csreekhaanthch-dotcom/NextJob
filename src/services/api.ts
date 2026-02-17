@@ -51,6 +51,23 @@ class ApiService {
     return response.json();
   }
 
+  private async fetchWithTimeout(url: string, options: RequestInit = {}, timeout: number = 10000): Promise<Response> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    
+    try {
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      return response;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      throw error;
+    }
+  }
+
   async searchJobs(params: { 
     keyword?: string; 
     location?: string; 
@@ -70,13 +87,38 @@ class ApiService {
     console.log('Making request to:', url);
     
     try {
-      const response = await fetch(url, {
+      const response = await this.fetchWithTimeout(url, {
         headers: {
           'Content-Type': 'application/json',
         },
       });
       
       console.log('Fetch response status:', response.status);
+      return this.handleResponse(response);
+    } catch (error) {
+      console.error('Fetch error:', error);
+      if (error instanceof TypeError) {
+        if (error.message === 'Failed to fetch') {
+          throw new Error('Unable to connect to the backend server. Please ensure the backend is running and accessible.');
+        }
+        throw new Error(`Network error: ${error.message}`);
+      } else if ((error as Error).name === 'AbortError') {
+        throw new Error('Request timeout - the backend is taking too long to respond');
+      }
+      throw error;
+    }
+  }
+
+  async getJob(id: string): Promise<Job> {
+    const url = `${this.baseUrl}/api/jobs/${id}`;
+    console.log('Making request to:', url);
+    
+    try {
+      const response = await this.fetchWithTimeout(url, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
       return this.handleResponse(response);
     } catch (error) {
       console.error('Fetch error:', error);
@@ -87,30 +129,23 @@ class ApiService {
     }
   }
 
-  async getJob(id: string): Promise<Job> {
-    const response = await fetch(`${this.baseUrl}/api/jobs/${id}`, {
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-    return this.handleResponse(response);
-  }
-
   async checkHealth(): Promise<any> {
     try {
-      // In development, check local backend
-      // In production, assume backend is integrated
       const healthUrl = `${this.baseUrl}/health`;
       console.log('Checking health at:', healthUrl);
       
-      const response = await fetch(healthUrl, {
+      const response = await this.fetchWithTimeout(healthUrl, {
         headers: {
           'Content-Type': 'application/json',
         },
-      });
+      }, 5000); // 5 second timeout for health check
+      
       return this.handleResponse(response);
     } catch (error) {
-      // Return a specific error message when backend is unreachable
+      console.error('Health check error:', error);
+      if ((error as Error).name === 'AbortError') {
+        throw new Error('Backend health check timeout - backend may be unresponsive');
+      }
       throw new Error('Unable to connect to the backend server. Please ensure the backend is running.');
     }
   }

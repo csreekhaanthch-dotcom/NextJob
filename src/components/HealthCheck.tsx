@@ -12,7 +12,16 @@ const HealthCheck: React.FC = () => {
         // Use the same API base URL as the main service
         const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
         console.log('Checking health at:', `${baseUrl}/health`);
-        const response = await fetch(`${baseUrl}/health`);
+        
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+        
+        const response = await fetch(`${baseUrl}/health`, {
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        
         if (response.ok) {
           if (isMounted) {
             setStatus('healthy');
@@ -26,7 +35,11 @@ const HealthCheck: React.FC = () => {
         if (isMounted) {
           setStatus('error');
           if (error instanceof Error) {
-            setMessage(`Backend connectivity issue: ${error.message}`);
+            if (error.name === 'AbortError') {
+              setMessage('Backend connectivity timeout - please check if backend is running');
+            } else {
+              setMessage(`Backend connectivity issue: ${error.message}`);
+            }
           } else {
             setMessage('Backend is not reachable. Please ensure the backend server is running.');
           }
@@ -34,14 +47,14 @@ const HealthCheck: React.FC = () => {
       }
     };
 
-    // Only show health check in development
+    // Only show health check in development or when explicitly enabled
     if (import.meta.env.DEV) {
       checkHealth();
     } else {
-      // In production, assume backend is handled by Render
+      // In production/preview, assume backend is handled by infrastructure
       if (isMounted) {
         setStatus('healthy');
-        setMessage('Application is running in production mode');
+        setMessage('Application is running');
       }
     }
     
@@ -50,7 +63,7 @@ const HealthCheck: React.FC = () => {
     };
   }, []);
 
-  // Don't show health check in production
+  // Don't show health check in production unless explicitly enabled
   if (!import.meta.env.DEV) {
     return null;
   }
