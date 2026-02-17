@@ -98,12 +98,12 @@ class ApiService {
 
   async checkHealth(): Promise<any> {
     try {
-      // Skip health check in production as it's handled by Render
-      if (!import.meta.env.DEV) {
-        return { status: 'ok', message: 'Production environment' };
-      }
+      // In development, check local backend
+      // In production, assume backend is integrated
+      const healthUrl = `${this.baseUrl}/health`;
+      console.log('Checking health at:', healthUrl);
       
-      const response = await fetch(`${this.baseUrl}/health`, {
+      const response = await fetch(healthUrl, {
         headers: {
           'Content-Type': 'application/json',
         },
