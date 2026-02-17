@@ -39,6 +39,14 @@
   },
   "engines": {
     "node": "20.x",
-    "npm": ">=8.0.0"
+    "pnpm": ">=8.0.0"
+  },
+  "pnpm": {
+    "peerDependencyRules": {
+      "ignoreMissing": [
+        "react",
+        "react-dom"
+      ]
+    }
   }
 }
