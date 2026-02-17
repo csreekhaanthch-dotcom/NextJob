@@ -17,7 +17,7 @@ console.log('- RAPIDAPI_KEY configured:', !!process.env.RAPIDAPI_KEY);
 if (process.env.NODE_ENV === 'production') {
   // In production, only allow requests from the frontend domain
   const corsOptions = {
-    origin: process.env.FRONTEND_URL || 'https://your-frontend.onrender.com',
+    origin: process.env.FRONTEND_URL || 'https://nextjob-frontend.onrender.com',
     credentials: true
   };
   console.log('Production CORS enabled for origin:', corsOptions.origin);
