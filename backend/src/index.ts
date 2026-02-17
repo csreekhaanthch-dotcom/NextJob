@@ -18,11 +18,11 @@ app.get('/health', (req: Request, res: Response) => {
   res.json({ 
     status: 'ok', 
     timestamp: new Date().toISOString(),
-    service: 'jobboard-backend'
+    service: 'nextjob-backend'
   });
 });
 
-// Placeholder jobs endpoint
+// Jobs search endpoint - placeholder for now
 app.get('/api/jobs', (req: Request, res: Response) => {
   res.json({ 
     jobs: [],
@@ -35,7 +35,7 @@ app.get('/api/jobs', (req: Request, res: Response) => {
 // Main endpoint
 app.get('/', (req: Request, res: Response) => {
   res.json({ 
-    message: 'JobBoard API Server is running', 
+    message: 'NextJob API Server is running', 
     port: PORT,
     timestamp: new Date().toISOString()
   });

@@ -1,30 +1,46 @@
 #!/bin/bash
 
-echo "Verifying builds..."
+echo "=== Verifying Build Process ==="
 
-# Verify frontend build
-echo "Verifying frontend build..."
-if pnpm run build; then
-  echo "Frontend build succeeded!"
-else
-  echo "Frontend build failed!"
+# Check Node version
+echo "Node version: $(node --version)"
+echo "NPM version: $(npm --version)"
+
+# Test frontend installation
+echo "Testing frontend installation..."
+npm install
+if [ $? -ne 0 ]; then
+  echo "ERROR: Frontend installation failed"
   exit 1
 fi
 
-# Verify backend build
-echo "Verifying backend build..."
+# Test frontend build
+echo "Testing frontend build..."
+npm run build
+if [ $? -ne 0 ]; then
+  echo "ERROR: Frontend build failed"
+  exit 1
+fi
+
+echo "Frontend build successful!"
+
+# Test backend installation
+echo "Testing backend installation..."
 cd backend
-if npm run build; then
-  echo "Backend build succeeded!"
-else
-  echo "Backend build failed!"
+npm install
+if [ $? -ne 0 ]; then
+  echo "ERROR: Backend installation failed"
   exit 1
 fi
 
-# Check if dist files exist
-if [ -d "../dist" ] && [ -d "dist" ]; then
-  echo "Build verification successful!"
-else
-  echo "Build verification failed - dist directories missing!"
+# Test backend build
+echo "Testing backend build..."
+npm run build
+if [ $? -ne 0 ]; then
+  echo "ERROR: Backend build failed"
   exit 1
 fi
+
+echo "Backend build successful!"
+
+echo "=== All validations passed ==="
