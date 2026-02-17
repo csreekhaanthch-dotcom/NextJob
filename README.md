@@ -25,10 +25,6 @@ This application is configured for deployment to Render.com with both frontend a
    - In the "Environment" section, add your `RAPIDAPI_KEY`
    - The frontend will automatically use the backend URL
 
-5. Update the frontend API URL:
-   - In the `render.yaml` file, replace `<REPLACE_WITH_YOUR_RENDER_USERNAME>` with your Render username
-   - Or update the `VITE_API_URL` environment variable in the Render dashboard after deployment
-
 ### Environment Variables
 
 Backend:
