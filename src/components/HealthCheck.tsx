@@ -18,12 +18,28 @@ const HealthCheck: React.FC = () => {
         }
       } catch (error) {
         setStatus('error');
-        setMessage('Backend is not reachable');
+        if (error instanceof Error) {
+          setMessage(`Backend connectivity issue: ${error.message}`);
+        } else {
+          setMessage('Backend is not reachable. Please ensure the backend server is running.');
+        }
       }
     };
 
-    checkHealth();
+    // Only show health check in development
+    if (import.meta.env.DEV) {
+      checkHealth();
+    } else {
+      // In production, assume backend is handled by Render
+      setStatus('healthy');
+      setMessage('Application is running in production mode');
+    }
   }, []);
+
+  // Don't show health check in production
+  if (!import.meta.env.DEV) {
+    return null;
+  }
 
   if (status === 'checking') {
     return (
@@ -75,6 +91,9 @@ const HealthCheck: React.FC = () => {
           </p>
           <p className="text-sm text-red-700 mt-1">
             Please make sure the backend server is running at {import.meta.env.VITE_API_URL || 'http://localhost:3001'}
+          </p>
+          <p className="text-sm text-red-700 mt-1">
+            Try running: <code className="bg-gray-100 px-1 rounded">cd backend && npm run dev</code>
           </p>
         </div>
       </div>

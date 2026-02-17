@@ -1,4 +1,5 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 
+  (import.meta.env.DEV ? 'http://localhost:3001' : '/api');
 
 export interface Job {
   id: string;
@@ -81,6 +82,11 @@ class ApiService {
 
   async checkHealth(): Promise<any> {
     try {
+      // Skip health check in production as it's handled by Render
+      if (!import.meta.env.DEV) {
+        return { status: 'ok', message: 'Production environment' };
+      }
+      
       const response = await fetch(`${this.baseUrl}/health`, {
         headers: {
           'Content-Type': 'application/json',
