@@ -13,20 +13,13 @@ export default defineConfig({
     port: 3000,
     proxy: {
       '/api': {
-        target: process.env.VITE_API_URL || 'http://localhost:3001',
+        target: 'http://localhost:3001',
         changeOrigin: true,
-        rewrite: (path) => {
-          console.log('Proxying API request:', path);
-          return path.replace(/^\/api/, '/api');
-        },
+        rewrite: (path) => path.replace(/^\/api/, '/api'),
       },
       '/health': {
-        target: process.env.VITE_API_URL || 'http://localhost:3001',
+        target: 'http://localhost:3001',
         changeOrigin: true,
-        rewrite: (path) => {
-          console.log('Proxying health request:', path);
-          return path;
-        },
       }
     },
   },
