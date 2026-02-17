@@ -9,7 +9,9 @@ const HealthCheck: React.FC = () => {
     
     const checkHealth = async () => {
       try {
-        const response = await fetch('http://localhost:3001/health');
+        // Use the same API base URL as the main service
+        const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+        const response = await fetch(`${baseUrl}/health`);
         if (response.ok) {
           if (isMounted) {
             setStatus('healthy');
@@ -96,10 +98,7 @@ const HealthCheck: React.FC = () => {
             {message}
           </p>
           <p className="text-sm text-red-700 mt-1">
-            Please make sure the backend server is running at http://localhost:3001
-          </p>
-          <p className="text-sm text-red-700 mt-1">
-            Try running: <code className="bg-gray-100 px-1 rounded">cd backend && npm run dev</code>
+            Please make sure the backend server is running at the correct URL
           </p>
         </div>
       </div>
