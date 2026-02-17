@@ -5,13 +5,20 @@ services:
     env: static
     region: oregon
     plan: free
-    buildCommand: pnpm install --frozen-lockfile && pnpm run build
+    # Use fix script and explicitly use npm
+    buildCommand: chmod +x scripts/fix-deployment.sh && scripts/fix-deployment.sh && npm install --prefer-offline --no-audit && npm run build
     staticPublishPath: dist
     envVars:
       - key: NODE_VERSION
         value: 20
       - key: VITE_API_URL
         value: https://nextjob-backend-cnah.onrender.com
+      - key: PNPM_HOME
+        value: ""
+      - key: COREPACK_ENABLE_STRICT
+        value: "0"
+      - key: NPM_CONFIG_ENGINE_STRICT
+        value: "false"
     routes:
       - type: rewrite
         source: /*
@@ -23,8 +30,9 @@ services:
     env: node
     region: oregon
     plan: free
-    buildCommand: cd backend && pnpm install --frozen-lockfile && pnpm run build
-    startCommand: cd backend && pnpm start
+    # Use fix script and explicitly use npm
+    buildCommand: chmod +x ../scripts/fix-deployment.sh && ../scripts/fix-deployment.sh && npm install --prefer-offline --no-audit && npm run build
+    startCommand: npm start
     envVars:
       - key: NODE_VERSION
         value: 20
@@ -32,4 +40,11 @@ services:
         value: 10000
       - key: RAPIDAPI_KEY
         sync: false
+      - key: PNPM_HOME
+        value: ""
+      - key: COREPACK_ENABLE_STRICT
+        value: "0"
+      - key: NPM_CONFIG_ENGINE_STRICT
+        value: "false"
     healthCheckPath: /health
+    rootDir: backend
