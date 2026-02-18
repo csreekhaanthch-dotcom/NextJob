@@ -14,15 +14,17 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve static files in production
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../dist')));
+// --- Removed frontend serving ---
+// In this Render setup, frontend is deployed separately, so serving /dist is unnecessary.
+// if (process.env.NODE_ENV === 'production') {
+//   app.use(express.static(path.join(__dirname, '../dist')));
   
-  // Handle SPA routing
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../dist/index.html'));
-  });
-}
+//   // Handle SPA routing
+//   app.get('*', (req, res) => {
+//     res.sendFile(path.join(__dirname, '../dist/index.html'));
+//   });
+// }
+
 
 // Health check endpoint
 app.get('/health', (req, res) => {
