@@ -17,7 +17,7 @@ export const rateLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  skip: (req) => {
+  skip: (req: Request): boolean => {
     // Skip rate limiting for health check endpoints
     return req.path === '/health' || req.path === '/';
   }
@@ -53,38 +53,42 @@ export const securityHeaders = helmet({
 });
 
 // Input validation middleware
-export const validateSearchParams = (req: Request, res: Response, next: NextFunction) => {
+export const validateSearchParams = (req: Request, res: Response, next: NextFunction): void => {
   const { search, location, page, limit } = req.query;
   
   // Validate page parameter
   if (page && (isNaN(Number(page)) || Number(page) < 1)) {
-    return res.status(400).json({
+    res.status(400).json({
       error: 'Invalid parameter',
       message: 'Page must be a positive integer'
     });
+    return;
   }
   
   // Validate limit parameter
   if (limit && (isNaN(Number(limit)) || Number(limit) < 1 || Number(limit) > 100)) {
-    return res.status(400).json({
+    res.status(400).json({
       error: 'Invalid parameter',
       message: 'Limit must be between 1 and 100'
     });
+    return;
   }
   
   // Sanitize search and location parameters
   if (search && typeof search !== 'string') {
-    return res.status(400).json({
+    res.status(400).json({
       error: 'Invalid parameter',
       message: 'Search must be a string'
     });
+    return;
   }
   
   if (location && typeof location !== 'string') {
-    return res.status(400).json({
+    res.status(400).json({
       error: 'Invalid parameter',
       message: 'Location must be a string'
     });
+    return;
   }
   
   next();
