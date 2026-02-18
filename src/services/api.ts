@@ -99,21 +99,13 @@ class ApiService {
   }
 
   async getJob(id: string): Promise<Job> {
-    const url = `${this.baseUrl}/api/jobs/${id}`;
-    
-    try {
-      const response = await this.fetchWithTimeout(url, {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-      return this.handleResponse(response);
-    } catch (error) {
-      if (error instanceof TypeError && error.message === 'Failed to fetch') {
-        throw new Error('Unable to connect to the backend server. Please ensure the backend is running and accessible.');
-      }
-      throw error;
+    // For now, we'll simulate getting a single job by searching and finding by ID
+    const response = await this.searchJobs({});
+    const job = response.jobs.find(j => j.id === id);
+    if (!job) {
+      throw new Error('Job not found');
     }
+    return job;
   }
 
   async checkHealth(): Promise<any> {
