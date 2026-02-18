@@ -20,7 +20,8 @@
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
     "allowUnreachableCode": false,
-    "allowUnusedLabels": false
+    "allowUnusedLabels": false,
+    "exactOptionalPropertyTypes": true
   },
   "include": [
     "src/**/*"
