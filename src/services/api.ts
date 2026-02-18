@@ -27,11 +27,8 @@ class ApiService {
   }
 
   private async handleResponse(response: Response) {
-    console.log('API response received:', response.status, response.statusText);
-    
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('API error response:', errorText);
       let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
       
       try {
@@ -79,7 +76,6 @@ class ApiService {
     if (params.limit) urlParams.append('limit', String(params.limit));
 
     const url = `${this.baseUrl}/api/jobs?${urlParams}`;
-    console.log('Making request to:', url);
     
     try {
       const response = await this.fetchWithTimeout(url, {
@@ -88,10 +84,8 @@ class ApiService {
         },
       });
       
-      console.log('Fetch response status:', response.status);
       return this.handleResponse(response);
     } catch (error) {
-      console.error('Fetch error:', error);
       if (error instanceof TypeError) {
         if (error.message === 'Failed to fetch') {
           throw new Error('Unable to connect to the backend server. Please ensure the backend is running and accessible.');
@@ -106,7 +100,6 @@ class ApiService {
 
   async getJob(id: string): Promise<Job> {
     const url = `${this.baseUrl}/api/jobs/${id}`;
-    console.log('Making request to:', url);
     
     try {
       const response = await this.fetchWithTimeout(url, {
@@ -116,7 +109,6 @@ class ApiService {
       });
       return this.handleResponse(response);
     } catch (error) {
-      console.error('Fetch error:', error);
       if (error instanceof TypeError && error.message === 'Failed to fetch') {
         throw new Error('Unable to connect to the backend server. Please ensure the backend is running and accessible.');
       }
@@ -127,8 +119,6 @@ class ApiService {
   async checkHealth(): Promise<any> {
     try {
       const healthUrl = `${this.baseUrl}/health`;
-      console.log('Checking health at:', healthUrl);
-      
       const response = await this.fetchWithTimeout(healthUrl, {
         headers: {
           'Content-Type': 'application/json',
@@ -137,7 +127,6 @@ class ApiService {
       
       return this.handleResponse(response);
     } catch (error) {
-      console.error('Health check error:', error);
       if ((error as Error).name === 'AbortError') {
         throw new Error('Backend health check timeout - backend may be unresponsive');
       }
