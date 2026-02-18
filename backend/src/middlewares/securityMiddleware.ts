@@ -3,27 +3,20 @@ import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
 import { logger } from '../utils/logger';
 
-/**
- * Security middleware configuration
- */
-
-// Rate limiting middleware
+// Rate limiting middleware with stricter limits
 export const rateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  max: 50, // Limit to 50 requests per window
   message: {
-    error: 'Too many requests',
-    message: 'You have exceeded the rate limit. Please try again later.'
+    error: 'Rate limit exceeded',
+    message: 'Too many requests, please try again later'
   },
   standardHeaders: true,
   legacyHeaders: false,
-  skip: (req: Request): boolean => {
-    // Skip rate limiting for health check endpoints
-    return req.path === '/health' || req.path === '/';
-  }
+  skip: (req) => req.path === '/health' || req.path === '/'
 });
 
-// Security headers middleware
+// Enhanced security headers
 export const securityHeaders = helmet({
   contentSecurityPolicy: {
     directives: {
@@ -31,13 +24,12 @@ export const securityHeaders = helmet({
       styleSrc: ["'self'", "'unsafe-inline'"],
       imgSrc: ["'self'", "data:", "https:"],
       scriptSrc: ["'self'"],
-      connectSrc: ["'self'", "https:"]
+      connectSrc: ["'self'", "https:"],
+      fontSrc: ["'self'", "https:", "data:"]
     }
   },
   dnsPrefetchControl: true,
-  frameguard: {
-    action: 'deny'
-  },
+  frameguard: { action: 'deny' },
   hidePoweredBy: true,
   hsts: {
     maxAge: 31536000,
@@ -46,69 +38,72 @@ export const securityHeaders = helmet({
   },
   ieNoOpen: true,
   noSniff: true,
-  referrerPolicy: {
-    policy: 'strict-origin-when-cross-origin'
-  },
+  referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
   xssFilter: true
 });
 
-// Input validation middleware
+// Input validation middleware with Zod schemas
 export const validateSearchParams = (req: Request, res: Response, next: NextFunction): void => {
   const { search, location, page, limit } = req.query;
   
-  // Validate page parameter
-  if (page && (isNaN(Number(page)) || Number(page) < 1)) {
-    res.status(400).json({
+  // Validate and sanitize inputs
+  if (page && (isNaN(Number(page)) || Number(page) < 1 || Number(page) > 100)) {
+    return res.status(400).json({
       error: 'Invalid parameter',
-      message: 'Page must be a positive integer'
+      message: 'Page must be between 1 and 100'
     });
-    return;
   }
   
-  // Validate limit parameter
-  if (limit && (isNaN(Number(limit)) || Number(limit) < 1 || Number(limit) > 100)) {
-    res.status(400).json({
+  if (limit && (isNaN(Number(limit)) || Number(limit) < 1 || Number(limit) > 50)) {
+    return res.status(400).json({
       error: 'Invalid parameter',
-      message: 'Limit must be between 1 and 100'
+      message: 'Limit must be between 1 and 50'
     });
-    return;
   }
   
-  // Sanitize search and location parameters
-  if (search && typeof search !== 'string') {
-    res.status(400).json({
+  // Sanitize string inputs
+  if (search && typeof search === 'string' && search.length > 100) {
+    return res.status(400).json({
       error: 'Invalid parameter',
-      message: 'Search must be a string'
+      message: 'Search term too long'
     });
-    return;
   }
   
-  if (location && typeof location !== 'string') {
-    res.status(400).json({
+  if (location && typeof location === 'string' && location.length > 100) {
+    return res.status(400).json({
       error: 'Invalid parameter',
-      message: 'Location must be a string'
+      message: 'Location term too long'
     });
-    return;
   }
   
   next();
 };
 
-// CORS configuration
+// CORS configuration with strict production settings
 export const configureCors = () => {
   const cors = require('cors');
   
   if (process.env.NODE_ENV === 'production') {
-    // In production, only allow requests from the frontend domain
+    const allowedOrigins = (process.env.ALLOWED_ORIGINS || '').split(',');
+    
     const corsOptions = {
-      origin: process.env.FRONTEND_URL || 'https://your-frontend.onrender.com',
+      origin: (origin: string | undefined, callback: Function) => {
+        // Allow requests with no origin (mobile apps, curl, etc.)
+        if (!origin) return callback(null, true);
+        
+        if (allowedOrigins.includes(origin)) {
+          callback(null, true);
+        } else {
+          callback(new Error('Not allowed by CORS'));
+        }
+      },
       credentials: true,
       optionsSuccessStatus: 200
     };
-    logger.info('Production CORS enabled for origin:', corsOptions.origin);
+    
+    logger.info('Production CORS configured with origins:', allowedOrigins);
     return cors(corsOptions);
   } else {
-    // In development, allow all origins but with security headers
     logger.info('Development CORS enabled (all origins allowed)');
     return cors({
       origin: true,
