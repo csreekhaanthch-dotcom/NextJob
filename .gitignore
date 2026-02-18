@@ -19,10 +19,6 @@ server/node_modules/
 server/dist/
 !.env.example
 
-# Lockfiles (use pnpm only)
-package-lock.json
-yarn.lock
-
 # All env variations
 .env.*
 !.env.example
@@ -85,9 +81,6 @@ android/local.properties
 # Prevent accidental env commits
 .env.*
 !.env.example
-
-# Prevent npm lockfile
-package-lock.json
 
 # Vite artifacts
 *.timestamp-*.mjs
