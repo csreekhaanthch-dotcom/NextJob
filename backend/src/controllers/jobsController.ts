@@ -7,7 +7,7 @@ export class JobsController {
    * GET /api/jobs
    * Search jobs with pagination and filtering
    */
-  static async searchJobs(req: Request, res: Response) {
+  static async searchJobs(req: Request, res: Response): Promise<void> {
     try {
       const { search, location, page, limit } = req.query;
       
@@ -32,17 +32,19 @@ export class JobsController {
       
       if (error instanceof Error) {
         if (error.message.includes('API credentials not configured')) {
-          return res.status(500).json({
+          res.status(500).json({
             error: 'API configuration error',
             message: 'The job service is not properly configured'
           });
+          return;
         }
         
         if (error.message.includes('HTTP')) {
-          return res.status(502).json({
+          res.status(502).json({
             error: 'External API error',
             message: 'Failed to fetch jobs from external service'
           });
+          return;
         }
       }
       
@@ -57,7 +59,7 @@ export class JobsController {
    * GET /api/jobs/:id
    * Get a specific job by ID
    */
-  static async getJobById(req: Request, res: Response) {
+  static async getJobById(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       

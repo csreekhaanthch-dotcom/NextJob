@@ -63,7 +63,7 @@ class AdzunaClient {
 
     try {
       const response = await this.makeRequestWithRetry(url.toString());
-      const data: AdzunaResponse = await response.json();
+      const data: AdzunaResponse = await response.json() as AdzunaResponse;
       
       const jobs = data.results.map(job => ({
         id: job.id,
