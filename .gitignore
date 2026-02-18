@@ -19,6 +19,20 @@ server/node_modules/
 server/dist/
 !.env.example
 
+# Lockfiles (use pnpm only)
+package-lock.json
+yarn.lock
+
+# All env variations
+.env.*
+!.env.example
+
+# Vite timestamp artifacts
+*.timestamp-*.mjs
+
+# Root build artifacts
+/dist
+
 # Logs
 *.log
 npm-debug.log*
