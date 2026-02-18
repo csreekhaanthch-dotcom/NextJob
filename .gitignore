@@ -81,3 +81,13 @@ ios/App/Podfile.lock
 android/app/build/
 android/.gradle/
 android/local.properties
+
+# Prevent accidental env commits
+.env.*
+!.env.example
+
+# Prevent npm lockfile
+package-lock.json
+
+# Vite artifacts
+*.timestamp-*.mjs
