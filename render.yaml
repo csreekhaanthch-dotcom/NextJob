@@ -9,9 +9,9 @@ services:
     staticPublishPath: dist
     envVars:
       - key: NODE_VERSION
-        value: 20
+        value: 18
       - key: VITE_API_URL
-        value: https://nextjob-backend-cnah.onrender.com
+        value: https://nextjob-backend.onrender.com
     routes:
       - type: rewrite
         source: /*
@@ -23,14 +23,10 @@ services:
     env: node
     region: oregon
     plan: free
-    buildCommand: cd backend && npm install && npm run build
-    startCommand: cd backend && npm start
+    buildCommand: cd backend && npm install
+    startCommand: cd backend && node server.js
     envVars:
       - key: NODE_VERSION
-        value: 20
+        value: 18
       - key: PORT
         value: 10000
-      - key: RAPIDAPI_KEY
-        sync: false
-    healthCheckPath: /health
-    rootDir: backend
