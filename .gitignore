@@ -19,6 +19,16 @@ server/node_modules/
 server/dist/
 !.env.example
 
+# All env variations
+.env.*
+!.env.example
+
+# Vite timestamp artifacts
+*.timestamp-*.mjs
+
+# Root build artifacts
+/dist
+
 # Logs
 *.log
 npm-debug.log*
@@ -67,3 +77,10 @@ ios/App/Podfile.lock
 android/app/build/
 android/.gradle/
 android/local.properties
+
+# Prevent accidental env commits
+.env.*
+!.env.example
+
+# Vite artifacts
+*.timestamp-*.mjs
