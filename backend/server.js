@@ -5,7 +5,7 @@ const axios = require('axios');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
-const jwt = require('jsonwebtoken');
+const fs = require('fs');
 
 // Load environment variables
 dotenv.config();
@@ -14,57 +14,9 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Initialize cache service
-let cacheService;
-try {
-  const RedisService = require('./src/services/RedisService');
-  cacheService = new RedisService();
-  console.log('Redis service initialized');
-} catch (error) {
-  console.warn('Failed to initialize Redis service, using simple in-memory cache:', error.message);
-  // Simple in-memory cache fallback
-  const NodeCache = require('node-cache');
-  cacheService = {
-    fallbackCache: new NodeCache({ stdTTL: 300 }),
-    get: function(key) {
-      return this.fallbackCache.get(key);
-    },
-    set: function(key, value, ttlSeconds = 300) {
-      return this.fallbackCache.set(key, value, ttlSeconds);
-    },
-    getStatus: function() {
-      return { redis: 'not available', fallback: 'in-memory cache' };
-    }
-  };
-}
-
-// ===============================
-// Connect to MongoDB (only if URI is provided)
-// ===============================
-let mongoose;
-let dbConnected = false;
-
-const connectDB = async () => {
-  try {
-    if (!process.env.MONGODB_URI) {
-      console.warn('MONGODB_URI not set, skipping MongoDB connection - auth features will be limited');
-      return;
-    }
-    
-    mongoose = require('mongoose');
-    await mongoose.connect(process.env.MONGODB_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
-    dbConnected = true;
-    console.log('MongoDB connected successfully');
-  } catch (error) {
-    console.error('MongoDB connection error:', error.message);
-    console.warn('MongoDB not available - auth features will be disabled');
-  }
-};
-
-connectDB();
+// Simple in-memory cache
+const cache = new Map();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 // ===============================
 // Middleware
@@ -86,208 +38,13 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// ===============================
-// Auth Routes (only if DB is connected)
-// ===============================
-let User, auth;
-if (dbConnected) {
-  User = require('./src/models/User');
-  auth = require('./src/middleware/auth');
+// Serve static files in production
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, '../dist')));
   
-  // Register
-  app.post('/api/auth/register', async (req, res) => {
-    try {
-      const { email, password, name } = req.body;
-
-      // Check if user exists
-      const existingUser = await User.findOne({ email });
-      if (existingUser) {
-        return res.status(400).json({ error: 'User already exists' });
-      }
-
-      // Create user
-      const user = new User({ email, password, name });
-      await user.save();
-
-      // Generate token
-      const token = jwt.sign(
-        { userId: user._id },
-        process.env.JWT_SECRET || 'fallback_secret_key',
-        { expiresIn: '7d' }
-      );
-
-      res.status(201).json({
-        user: {
-          id: user._id,
-          email: user.email,
-          name: user.name
-        },
-        token
-      });
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Login
-  app.post('/api/auth/login', async (req, res) => {
-    try {
-      const { email, password } = req.body;
-
-      // Check if user exists
-      const user = await User.findOne({ email });
-      if (!user) {
-        return res.status(400).json({ error: 'Invalid credentials' });
-      }
-
-      // Check password
-      const isMatch = await user.comparePassword(password);
-      if (!isMatch) {
-        return res.status(400).json({ error: 'Invalid credentials' });
-      }
-
-      // Generate token
-      const token = jwt.sign(
-        { userId: user._id },
-        process.env.JWT_SECRET || 'fallback_secret_key',
-        { expiresIn: '7d' }
-      );
-
-      res.json({
-        user: {
-          id: user._id,
-          email: user.email,
-          name: user.name
-        },
-        token
-      });
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Get user profile
-  app.get('/api/auth/profile', auth, async (req, res) => {
-    try {
-      const user = await User.findById(req.user._id).populate('bookmarks');
-      res.json({
-        user: {
-          id: user._id,
-          email: user.email,
-          name: user.name,
-          bookmarks: user.bookmarks
-        }
-      });
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // ===============================
-  // Bookmark Routes
-  // ===============================
-  const Job = require('./src/models/Job');
-
-  // Bookmark a job
-  app.post('/api/bookmarks', auth, async (req, res) => {
-    try {
-      const { job } = req.body;
-      
-      // Save job to database if not exists
-      let savedJob = await Job.findOne({ jobId: job.id });
-      if (!savedJob) {
-        savedJob = new Job({
-          jobId: job.id,
-          title: job.title,
-          company: job.company,
-          location: job.location,
-          description: job.description,
-          url: job.url,
-          salary: job.salary,
-          posted_date: job.posted_date,
-          tags: job.tags
-        });
-        await savedJob.save();
-      }
-      
-      // Add to user bookmarks
-      const user = await User.findById(req.user._id);
-      if (!user.bookmarks.includes(savedJob._id)) {
-        user.bookmarks.push(savedJob._id);
-        await user.save();
-      }
-      
-      res.json({ message: 'Job bookmarked successfully' });
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Get bookmarks
-  app.get('/api/bookmarks', auth, async (req, res) => {
-    try {
-      const user = await User.findById(req.user._id).populate('bookmarks');
-      res.json({ bookmarks: user.bookmarks });
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Remove bookmark
-  app.delete('/api/bookmarks/:jobId', auth, async (req, res) => {
-    try {
-      const user = await User.findById(req.user._id);
-      user.bookmarks = user.bookmarks.filter(
-        bookmark => bookmark.toString() !== req.params.jobId
-      );
-      await user.save();
-      res.json({ message: 'Bookmark removed successfully' });
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-} else {
-  // Mock auth endpoints when DB is not available
-  app.post('/api/auth/register', (req, res) => {
-    res.status(501).json({ 
-      error: 'Authentication not available', 
-      message: 'MongoDB not configured - auth features disabled' 
-    });
-  });
-
-  app.post('/api/auth/login', (req, res) => {
-    res.status(501).json({ 
-      error: 'Authentication not available', 
-      message: 'MongoDB not configured - auth features disabled' 
-    });
-  });
-
-  app.get('/api/auth/profile', (req, res) => {
-    res.status(501).json({ 
-      error: 'Authentication not available', 
-      message: 'MongoDB not configured - auth features disabled' 
-    });
-  });
-
-  app.post('/api/bookmarks', (req, res) => {
-    res.status(501).json({ 
-      error: 'Bookmarks not available', 
-      message: 'MongoDB not configured - bookmark features disabled' 
-    });
-  });
-
-  app.get('/api/bookmarks', (req, res) => {
-    res.status(501).json({ 
-      error: 'Bookmarks not available', 
-      message: 'MongoDB not configured - bookmark features disabled' 
-    });
-  });
-
-  app.delete('/api/bookmarks/:jobId', (req, res) => {
-    res.status(501).json({ 
-      error: 'Bookmarks not available', 
-      message: 'MongoDB not configured - bookmark features disabled' 
-    });
+  // Serve frontend for all routes except API
+  app.get(/^\/(?!api).*/, (req, res) => {
+    res.sendFile(path.join(__dirname, '../dist/index.html'));
   });
 }
 
@@ -300,13 +57,8 @@ app.get('/health', (req, res) => {
     status: 'ok',
     timestamp: new Date().toISOString(),
     service: 'nextjob-backend',
-    version: '1.1.0',
-    cache: cacheService.getStatus(),
-    auth: dbConnected ? 'available' : 'not configured',
-    databases: {
-      mongodb: dbConnected ? 'connected' : 'not configured',
-      redis: cacheService.getStatus().redis
-    }
+    version: '1.2.0',
+    cache: 'in-memory'
   });
 });
 
@@ -318,11 +70,17 @@ app.get('/api/jobs', async (req, res) => {
   const { search = '', location = '', page = 1, limit = 12 } = req.query;
 
   const cacheKey = `${search}-${location}-${page}-${limit}`;
-  const cachedData = await cacheService.get(cacheKey);
-
-  if (cachedData) {
-    console.log("Serving from cache");
-    return res.json(cachedData);
+  
+  // Check cache
+  if (cache.has(cacheKey)) {
+    const cached = cache.get(cacheKey);
+    if (Date.now() - cached.timestamp < CACHE_TTL) {
+      console.log("Serving from cache");
+      return res.json(cached.data);
+    } else {
+      // Remove expired cache entry
+      cache.delete(cacheKey);
+    }
   }
 
   try {
@@ -366,7 +124,10 @@ app.get('/api/jobs', async (req, res) => {
     };
 
     // Store in cache
-    await cacheService.set(cacheKey, responseData);
+    cache.set(cacheKey, {
+      data: responseData,
+      timestamp: Date.now()
+    });
 
     res.json(responseData);
 
@@ -381,13 +142,48 @@ app.get('/api/jobs', async (req, res) => {
 });
 
 // ===============================
-// Single Job Endpoint
+// Mock Auth Endpoints (for compatibility)
 // ===============================
 
-app.get('/api/jobs/:id', async (req, res) => {
-  res.status(501).json({
-    error: 'Single job fetch not implemented',
-    message: 'Use /api/jobs with search parameters instead'
+app.post('/api/auth/register', (req, res) => {
+  res.status(501).json({ 
+    error: 'Authentication not available', 
+    message: 'Deployed version does not include auth features' 
+  });
+});
+
+app.post('/api/auth/login', (req, res) => {
+  res.status(501).json({ 
+    error: 'Authentication not available', 
+    message: 'Deployed version does not include auth features' 
+  });
+});
+
+app.get('/api/auth/profile', (req, res) => {
+  res.status(501).json({ 
+    error: 'Authentication not available', 
+    message: 'Deployed version does not include auth features' 
+  });
+});
+
+app.post('/api/bookmarks', (req, res) => {
+  res.status(501).json({ 
+    error: 'Bookmarks not available', 
+    message: 'Deployed version does not include bookmark features' 
+  });
+});
+
+app.get('/api/bookmarks', (req, res) => {
+  res.status(501).json({ 
+    error: 'Bookmarks not available', 
+    message: 'Deployed version does not include bookmark features' 
+  });
+});
+
+app.delete('/api/bookmarks/:jobId', (req, res) => {
+  res.status(501).json({ 
+    error: 'Bookmarks not available', 
+    message: 'Deployed version does not include bookmark features' 
   });
 });
 
@@ -422,10 +218,7 @@ app.use((req, res) => {
 const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`NextJob backend running on port ${PORT}`);
   console.log(`Health check: /health`);
-  if (!dbConnected) {
-    console.log('NOTE: Authentication features are disabled because MongoDB is not configured');
-    console.log('To enable auth features, set MONGODB_URI in your .env file');
-  }
+  console.log('NOTE: Authentication features are disabled in deployed version');
 });
 
 // ===============================

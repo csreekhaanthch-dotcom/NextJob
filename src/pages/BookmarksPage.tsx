@@ -1,182 +1,31 @@
-import React, { useState, useEffect } from 'react';
-import { Heart, AlertTriangle, Info } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
-import JobCard from '../components/JobCard';
-
-interface Job {
-  _id: string;
-  jobId: string;
-  title: string;
-  company: string;
-  location: string;
-  description: string;
-  url: string;
-  salary?: string;
-  posted_date: number;
-  tags?: string[];
-}
+import React from 'react';
+import { Heart, AlertTriangle } from 'lucide-react';
 
 const BookmarksPage: React.FC = () => {
-  const [bookmarks, setBookmarks] = useState<Job[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  
-  const { user, isAuthenticated, authAvailable } = useAuth();
-  
-  useEffect(() => {
-    if (!authAvailable) {
-      setLoading(false);
-      return;
-    }
-    
-    if (!isAuthenticated) return;
-    
-    const fetchBookmarks = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        const response = await fetch('/api/bookmarks', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch bookmarks');
-        }
-        
-        const data = await response.json();
-        setBookmarks(data.bookmarks);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch bookmarks');
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchBookmarks();
-  }, [isAuthenticated, authAvailable]);
-  
-  if (!authAvailable) {
-    return (
-      <div className="container mx-auto px-4 py-16 text-center">
-        <div className="max-w-md mx-auto bg-yellow-50 border border-yellow-200 rounded-xl shadow-md p-8">
-          <AlertTriangle className="h-16 w-16 text-yellow-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Authentication Not Available</h2>
-          <p className="text-gray-600 mb-6">
-            Bookmarking features require MongoDB to be configured.
-          </p>
-          <div className="text-left bg-white p-4 rounded-lg mb-6">
-            <p className="font-medium text-gray-900 mb-2">To enable bookmarks:</p>
-            <ol className="list-decimal list-inside text-sm text-gray-600 space-y-1">
-              <li>Install MongoDB locally or use MongoDB Atlas</li>
-              <li>Set MONGODB_URI in your backend .env file</li>
-              <li>Restart the backend server</li>
-            </ol>
-          </div>
-          <a 
-            href="/jobs" 
-            className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Browse Jobs
-          </a>
-        </div>
-      </div>
-    );
-  }
-  
-  if (!isAuthenticated) {
-    return (
-      <div className="container mx-auto px-4 py-16 text-center">
-        <div className="max-w-md mx-auto bg-white rounded-xl shadow-md p-8">
-          <Heart className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Save Your Favorite Jobs</h2>
-          <p className="text-gray-600 mb-6">
-            Sign in to bookmark jobs and access them anytime
-          </p>
-          <button
-            onClick={() => document.dispatchEvent(new CustomEvent('openLoginModal', { detail: 'login' }))}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Sign In to View Bookmarks
-          </button>
-        </div>
-      </div>
-    );
-  }
-  
-  if (loading) {
-    return (
-      <div className="container mx-auto px-4 py-16">
-        <div className="flex justify-center items-center py-20">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-        </div>
-      </div>
-    );
-  }
-  
-  if (error) {
-    return (
-      <div className="container mx-auto px-4 py-16">
-        <div className="max-w-md mx-auto bg-red-50 border border-red-200 rounded-lg p-6">
-          <div className="text-red-800 font-medium mb-2">Error Loading Bookmarks</div>
-          <p className="text-red-700 mb-4">{error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
-          >
-            Retry
-          </button>
-        </div>
-      </div>
-    );
-  }
-  
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Your Bookmarked Jobs</h1>
-        <p className="text-gray-600">
-          {bookmarks.length} saved {bookmarks.length === 1 ? 'job' : 'jobs'}
+    <div className="container mx-auto px-4 py-16 text-center">
+      <div className="max-w-md mx-auto bg-yellow-50 border border-yellow-200 rounded-xl shadow-md p-8">
+        <AlertTriangle className="h-16 w-16 text-yellow-500 mx-auto mb-4" />
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">Feature Not Available</h2>
+        <p className="text-gray-600 mb-6">
+          Bookmarking features are not included in the deployed version.
         </p>
+        <div className="text-left bg-white p-4 rounded-lg mb-6">
+          <p className="font-medium text-gray-900 mb-2">To enable bookmarks:</p>
+          <ol className="list-decimal list-inside text-sm text-gray-600 space-y-1">
+            <li>Download the source code</li>
+            <li>Set up MongoDB locally or use MongoDB Atlas</li>
+            <li>Configure MONGODB_URI in your backend .env file</li>
+            <li>Run the application locally</li>
+          </ol>
+        </div>
+        <a 
+          href="/jobs" 
+          className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          Browse Jobs
+        </a>
       </div>
-      
-      {bookmarks.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {bookmarks.map((job) => (
-            <div key={job._id} className="relative">
-              <JobCard 
-                job={{
-                  id: job.jobId,
-                  title: job.title,
-                  company: job.company,
-                  location: job.location,
-                  description: job.description,
-                  url: job.url,
-                  salary: job.salary,
-                  posted_date: job.posted_date,
-                  tags: job.tags
-                }} 
-              />
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="text-center py-12">
-          <div className="bg-gray-50 p-8 rounded-xl max-w-md mx-auto">
-            <Heart className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">No bookmarks yet</h3>
-            <p className="text-gray-600 mb-4">
-              Save jobs you're interested in by clicking the bookmark icon on job cards
-            </p>
-            <a 
-              href="/jobs" 
-              className="inline-block px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Browse Jobs
-            </a>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

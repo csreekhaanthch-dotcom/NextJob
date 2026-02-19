@@ -23,8 +23,8 @@ function runCommand(command, args, options = {}) {
 // Main build process
 async function build() {
   try {
-    // Clean installation
-    console.log('Cleaning previous installations...');
+    // Clean previous builds
+    console.log('Cleaning previous builds...');
     
     // Install frontend dependencies
     console.log('Installing frontend dependencies...');
