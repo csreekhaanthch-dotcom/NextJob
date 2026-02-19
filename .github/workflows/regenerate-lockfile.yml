@@ -1,4 +1,4 @@
-name: Regenerate PNPM Lockfile
+name: Regenerate NPM Lockfile
 
 on:
   workflow_dispatch:
@@ -12,15 +12,13 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 20.x
-          cache: pnpm
-      - name: Install pnpm
-        run: npm install -g pnpm
+          cache: npm
       - name: Install dependencies and regenerate lockfile
-        run: pnpm install
-      - name: Commit updated pnpm-lock.yaml
+        run: npm install
+      - name: Commit updated package-lock.json
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-          git add pnpm-lock.yaml
-          git commit -m "Regenerate pnpm-lock.yaml to match package.json" || echo "No changes to commit"
+          git add package-lock.json
+          git commit -m "Regenerate package-lock.json to match package.json" || echo "No changes to commit"
           git push
