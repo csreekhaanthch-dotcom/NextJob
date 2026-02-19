@@ -58,7 +58,6 @@ app.get('/api/jobs', async (req, res) => {
         what: search,
         where: location,
         results_per_page: limit,
-        content-type: 'application/json'
       }
     });
 
