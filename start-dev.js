@@ -4,8 +4,8 @@ const path = require('path');
 console.log('Starting NextJob development environment...');
 
 // Start backend server
-const backend = spawn('node', ['backend/server.js'], {
-  cwd: process.cwd(),
+const backend = spawn('npm', ['run', 'dev'], {
+  cwd: path.join(process.cwd(), 'backend'),
   env: { ...process.env, NODE_ENV: 'development' }
 });
 
@@ -22,7 +22,7 @@ backend.on('close', (code) => {
 });
 
 // Start frontend development server
-const frontend = spawn('npx', ['vite'], {
+const frontend = spawn('npm', ['run', 'dev'], {
   cwd: process.cwd(),
   env: { ...process.env, NODE_ENV: 'development' }
 });

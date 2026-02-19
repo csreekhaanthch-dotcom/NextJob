@@ -1,32 +1,18 @@
 services:
-  # Frontend Static Site
-  - type: web
-    name: nextjob-frontend
-    env: static
-    region: oregon
-    plan: free
-    buildCommand: npm install && npm run build
-    staticPublishPath: dist
-    envVars:
-      - key: NODE_VERSION
-        value: 18
-      - key: VITE_API_URL
-        value: https://nextjob-backend.onrender.com
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
-  
   # Backend API Service
   - type: web
     name: nextjob-backend
     env: node
     region: oregon
     plan: free
-    buildCommand: cd backend && npm install
-    startCommand: cd backend && node server.js
+    buildCommand: npm install
+    startCommand: npm start
     envVars:
-      - key: NODE_VERSION
-        value: 18
+      - key: NODE_ENV
+        value: production
       - key: PORT
         value: 10000
+      - key: ADZUNA_APP_ID
+        sync: false
+      - key: ADZUNA_API_KEY
+        sync: false
