@@ -1,13 +1,13 @@
 # NextJob Backend Dockerfile
 # Multi-stage build for production deployment
 
-FROM node:20-alpine AS builder
+FROM node:25-alpine AS builder
 WORKDIR /app
 COPY backend/package*.json ./
 RUN npm ci
 COPY backend/ .
 
-FROM node:20-alpine
+FROM node:25-alpine
 WORKDIR /app
 COPY backend/package*.json ./
 RUN npm ci --only=production
