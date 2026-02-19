@@ -5,7 +5,7 @@ services:
     env: node
     region: oregon
     plan: free
-    buildCommand: npm install
+    buildCommand: rm -f pnpm-lock.yaml yarn.lock && npm install
     startCommand: npm start
     envVars:
       - key: NODE_ENV
