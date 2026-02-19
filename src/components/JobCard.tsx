@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MapPin, Building, Calendar, DollarSign, Heart } from 'lucide-react';
+import { MapPin, Building, Calendar, DollarSign, Heart, AlertTriangle } from 'lucide-react';
 import { Job } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -10,8 +10,9 @@ interface JobCardProps {
 const JobCard: React.FC<JobCardProps> = ({ job }) => {
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [showAuthMessage, setShowAuthMessage] = useState(false);
   
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, authAvailable } = useAuth();
   
   // Convert timestamp to readable date
   const formatPostedDate = (timestamp: number): string => {
@@ -35,6 +36,12 @@ const JobCard: React.FC<JobCardProps> = ({ job }) => {
   };
 
   const toggleBookmark = async () => {
+    if (!authAvailable) {
+      setShowAuthMessage(true);
+      setTimeout(() => setShowAuthMessage(false), 3000);
+      return;
+    }
+    
     if (!isAuthenticated) {
       // Dispatch event to open login modal
       document.dispatchEvent(new CustomEvent('openLoginModal', { detail: 'login' }));
@@ -49,9 +56,22 @@ const JobCard: React.FC<JobCardProps> = ({ job }) => {
       const method = isBookmarked ? 'DELETE' : 'POST';
       
       if (isBookmarked) {
-        // For simplicity, we'll just toggle the UI state
-        setIsBookmarked(false);
+        // Remove bookmark
+        const response = await fetch(`/api/bookmarks/${job.id}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (response.ok) {
+          setIsBookmarked(false);
+        } else {
+          throw new Error('Failed to remove bookmark');
+        }
       } else {
+        // Add bookmark
         const response = await fetch('/api/bookmarks', {
           method: 'POST',
           headers: {
@@ -76,6 +96,16 @@ const JobCard: React.FC<JobCardProps> = ({ job }) => {
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden job-card transition-all duration-200 hover:shadow-md hover:border-blue-200">
+      {showAuthMessage && (
+        <div className="bg-yellow-50 border-b border-yellow-200 p-3 flex items-start">
+          <AlertTriangle className="h-5 w-5 text-yellow-600 mr-2 flex-shrink-0 mt-0.5" />
+          <div className="text-sm text-yellow-700">
+            <p className="font-medium">Authentication Required</p>
+            <p>Bookmarks require MongoDB configuration.</p>
+          </div>
+        </div>
+      )}
+      
       <div className="p-6">
         <div className="flex flex-col sm:flex-row sm:items-start justify-between mb-4 gap-4">
           <div className="flex items-start">
@@ -99,11 +129,13 @@ const JobCard: React.FC<JobCardProps> = ({ job }) => {
           </div>
           <button
             onClick={toggleBookmark}
-            disabled={isLoading}
+            disabled={isLoading || !authAvailable}
             className={`self-start p-2 rounded-full ${
               isBookmarked 
                 ? 'text-red-500 bg-red-50 hover:bg-red-100' 
-                : 'text-gray-400 bg-gray-100 hover:bg-gray-200 hover:text-gray-600'
+                : authAvailable
+                  ? 'text-gray-400 bg-gray-100 hover:bg-gray-200 hover:text-gray-600'
+                  : 'text-gray-300 bg-gray-100 cursor-not-allowed'
             } transition-colors`}
             aria-label={isBookmarked ? "Remove bookmark" : "Bookmark job"}
           >

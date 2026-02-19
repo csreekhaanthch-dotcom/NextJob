@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Heart, Trash2, Calendar } from 'lucide-react';
+import { Heart, AlertTriangle, Info } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import JobCard from '../components/JobCard';
 
@@ -21,9 +21,14 @@ const BookmarksPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, authAvailable } = useAuth();
   
   useEffect(() => {
+    if (!authAvailable) {
+      setLoading(false);
+      return;
+    }
+    
     if (!isAuthenticated) return;
     
     const fetchBookmarks = async () => {
@@ -49,28 +54,35 @@ const BookmarksPage: React.FC = () => {
     };
     
     fetchBookmarks();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, authAvailable]);
   
-  const removeBookmark = async (jobId: string) => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/bookmarks/${jobId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to remove bookmark');
-      }
-      
-      setBookmarks(bookmarks.filter(bookmark => bookmark._id !== jobId));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to remove bookmark');
-    }
-  };
+  if (!authAvailable) {
+    return (
+      <div className="container mx-auto px-4 py-16 text-center">
+        <div className="max-w-md mx-auto bg-yellow-50 border border-yellow-200 rounded-xl shadow-md p-8">
+          <AlertTriangle className="h-16 w-16 text-yellow-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Authentication Not Available</h2>
+          <p className="text-gray-600 mb-6">
+            Bookmarking features require MongoDB to be configured.
+          </p>
+          <div className="text-left bg-white p-4 rounded-lg mb-6">
+            <p className="font-medium text-gray-900 mb-2">To enable bookmarks:</p>
+            <ol className="list-decimal list-inside text-sm text-gray-600 space-y-1">
+              <li>Install MongoDB locally or use MongoDB Atlas</li>
+              <li>Set MONGODB_URI in your backend .env file</li>
+              <li>Restart the backend server</li>
+            </ol>
+          </div>
+          <a 
+            href="/jobs" 
+            className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Browse Jobs
+          </a>
+        </div>
+      </div>
+    );
+  }
   
   if (!isAuthenticated) {
     return (
@@ -145,13 +157,6 @@ const BookmarksPage: React.FC = () => {
                   tags: job.tags
                 }} 
               />
-              <button
-                onClick={() => removeBookmark(job._id)}
-                className="absolute top-4 right-4 p-2 bg-white rounded-full shadow-md hover:bg-red-50 text-gray-500 hover:text-red-500 transition-colors"
-                aria-label="Remove bookmark"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
             </div>
           ))}
         </div>
