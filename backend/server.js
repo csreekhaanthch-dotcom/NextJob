@@ -39,24 +39,28 @@ try {
 }
 
 // ===============================
-// Connect to MongoDB
+// Connect to MongoDB (only if URI is provided)
 // ===============================
-const mongoose = require('mongoose');
+let mongoose;
+let dbConnected = false;
 
 const connectDB = async () => {
   try {
     if (!process.env.MONGODB_URI) {
-      console.warn('MONGODB_URI not set, skipping MongoDB connection');
+      console.warn('MONGODB_URI not set, skipping MongoDB connection - auth features will be limited');
       return;
     }
     
+    mongoose = require('mongoose');
     await mongoose.connect(process.env.MONGODB_URI, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
+    dbConnected = true;
     console.log('MongoDB connected successfully');
   } catch (error) {
     console.error('MongoDB connection error:', error.message);
+    console.warn('MongoDB not available - auth features will be disabled');
   }
 };
 
@@ -83,163 +87,209 @@ const limiter = rateLimit({
 app.use(limiter);
 
 // ===============================
-// Auth Routes
+// Auth Routes (only if DB is connected)
 // ===============================
-const User = require('./src/models/User');
-const auth = require('./src/middleware/auth');
+let User, auth;
+if (dbConnected) {
+  User = require('./src/models/User');
+  auth = require('./src/middleware/auth');
+  
+  // Register
+  app.post('/api/auth/register', async (req, res) => {
+    try {
+      const { email, password, name } = req.body;
 
-// Register
-app.post('/api/auth/register', async (req, res) => {
-  try {
-    const { email, password, name } = req.body;
-
-    // Check if user exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ error: 'User already exists' });
-    }
-
-    // Create user
-    const user = new User({ email, password, name });
-    await user.save();
-
-    // Generate token
-    const token = jwt.sign(
-      { userId: user._id },
-      process.env.JWT_SECRET || 'fallback_secret_key',
-      { expiresIn: '7d' }
-    );
-
-    res.status(201).json({
-      user: {
-        id: user._id,
-        email: user.email,
-        name: user.name
-      },
-      token
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Login
-app.post('/api/auth/login', async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    // Check if user exists
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(400).json({ error: 'Invalid credentials' });
-    }
-
-    // Check password
-    const isMatch = await user.comparePassword(password);
-    if (!isMatch) {
-      return res.status(400).json({ error: 'Invalid credentials' });
-    }
-
-    // Generate token
-    const token = jwt.sign(
-      { userId: user._id },
-      process.env.JWT_SECRET || 'fallback_secret_key',
-      { expiresIn: '7d' }
-    );
-
-    res.json({
-      user: {
-        id: user._id,
-        email: user.email,
-        name: user.name
-      },
-      token
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Get user profile
-app.get('/api/auth/profile', auth, async (req, res) => {
-  try {
-    const user = await User.findById(req.user._id).populate('bookmarks');
-    res.json({
-      user: {
-        id: user._id,
-        email: user.email,
-        name: user.name,
-        bookmarks: user.bookmarks
+      // Check if user exists
+      const existingUser = await User.findOne({ email });
+      if (existingUser) {
+        return res.status(400).json({ error: 'User already exists' });
       }
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
 
-// ===============================
-// Bookmark Routes
-// ===============================
-const Job = require('./src/models/Job');
-
-// Bookmark a job
-app.post('/api/bookmarks', auth, async (req, res) => {
-  try {
-    const { job } = req.body;
-    
-    // Save job to database if not exists
-    let savedJob = await Job.findOne({ jobId: job.id });
-    if (!savedJob) {
-      savedJob = new Job({
-        jobId: job.id,
-        title: job.title,
-        company: job.company,
-        location: job.location,
-        description: job.description,
-        url: job.url,
-        salary: job.salary,
-        posted_date: job.posted_date,
-        tags: job.tags
-      });
-      await savedJob.save();
-    }
-    
-    // Add to user bookmarks
-    const user = await User.findById(req.user._id);
-    if (!user.bookmarks.includes(savedJob._id)) {
-      user.bookmarks.push(savedJob._id);
+      // Create user
+      const user = new User({ email, password, name });
       await user.save();
+
+      // Generate token
+      const token = jwt.sign(
+        { userId: user._id },
+        process.env.JWT_SECRET || 'fallback_secret_key',
+        { expiresIn: '7d' }
+      );
+
+      res.status(201).json({
+        user: {
+          id: user._id,
+          email: user.email,
+          name: user.name
+        },
+        token
+      });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
     }
-    
-    res.json({ message: 'Job bookmarked successfully' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+  });
 
-// Get bookmarks
-app.get('/api/bookmarks', auth, async (req, res) => {
-  try {
-    const user = await User.findById(req.user._id).populate('bookmarks');
-    res.json({ bookmarks: user.bookmarks });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+  // Login
+  app.post('/api/auth/login', async (req, res) => {
+    try {
+      const { email, password } = req.body;
 
-// Remove bookmark
-app.delete('/api/bookmarks/:jobId', auth, async (req, res) => {
-  try {
-    const user = await User.findById(req.user._id);
-    user.bookmarks = user.bookmarks.filter(
-      bookmark => bookmark.toString() !== req.params.jobId
-    );
-    await user.save();
-    res.json({ message: 'Bookmark removed successfully' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+      // Check if user exists
+      const user = await User.findOne({ email });
+      if (!user) {
+        return res.status(400).json({ error: 'Invalid credentials' });
+      }
+
+      // Check password
+      const isMatch = await user.comparePassword(password);
+      if (!isMatch) {
+        return res.status(400).json({ error: 'Invalid credentials' });
+      }
+
+      // Generate token
+      const token = jwt.sign(
+        { userId: user._id },
+        process.env.JWT_SECRET || 'fallback_secret_key',
+        { expiresIn: '7d' }
+      );
+
+      res.json({
+        user: {
+          id: user._id,
+          email: user.email,
+          name: user.name
+        },
+        token
+      });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get user profile
+  app.get('/api/auth/profile', auth, async (req, res) => {
+    try {
+      const user = await User.findById(req.user._id).populate('bookmarks');
+      res.json({
+        user: {
+          id: user._id,
+          email: user.email,
+          name: user.name,
+          bookmarks: user.bookmarks
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ===============================
+  // Bookmark Routes
+  // ===============================
+  const Job = require('./src/models/Job');
+
+  // Bookmark a job
+  app.post('/api/bookmarks', auth, async (req, res) => {
+    try {
+      const { job } = req.body;
+      
+      // Save job to database if not exists
+      let savedJob = await Job.findOne({ jobId: job.id });
+      if (!savedJob) {
+        savedJob = new Job({
+          jobId: job.id,
+          title: job.title,
+          company: job.company,
+          location: job.location,
+          description: job.description,
+          url: job.url,
+          salary: job.salary,
+          posted_date: job.posted_date,
+          tags: job.tags
+        });
+        await savedJob.save();
+      }
+      
+      // Add to user bookmarks
+      const user = await User.findById(req.user._id);
+      if (!user.bookmarks.includes(savedJob._id)) {
+        user.bookmarks.push(savedJob._id);
+        await user.save();
+      }
+      
+      res.json({ message: 'Job bookmarked successfully' });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get bookmarks
+  app.get('/api/bookmarks', auth, async (req, res) => {
+    try {
+      const user = await User.findById(req.user._id).populate('bookmarks');
+      res.json({ bookmarks: user.bookmarks });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Remove bookmark
+  app.delete('/api/bookmarks/:jobId', auth, async (req, res) => {
+    try {
+      const user = await User.findById(req.user._id);
+      user.bookmarks = user.bookmarks.filter(
+        bookmark => bookmark.toString() !== req.params.jobId
+      );
+      await user.save();
+      res.json({ message: 'Bookmark removed successfully' });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+} else {
+  // Mock auth endpoints when DB is not available
+  app.post('/api/auth/register', (req, res) => {
+    res.status(501).json({ 
+      error: 'Authentication not available', 
+      message: 'MongoDB not configured - auth features disabled' 
+    });
+  });
+
+  app.post('/api/auth/login', (req, res) => {
+    res.status(501).json({ 
+      error: 'Authentication not available', 
+      message: 'MongoDB not configured - auth features disabled' 
+    });
+  });
+
+  app.get('/api/auth/profile', (req, res) => {
+    res.status(501).json({ 
+      error: 'Authentication not available', 
+      message: 'MongoDB not configured - auth features disabled' 
+    });
+  });
+
+  app.post('/api/bookmarks', (req, res) => {
+    res.status(501).json({ 
+      error: 'Bookmarks not available', 
+      message: 'MongoDB not configured - bookmark features disabled' 
+    });
+  });
+
+  app.get('/api/bookmarks', (req, res) => {
+    res.status(501).json({ 
+      error: 'Bookmarks not available', 
+      message: 'MongoDB not configured - bookmark features disabled' 
+    });
+  });
+
+  app.delete('/api/bookmarks/:jobId', (req, res) => {
+    res.status(501).json({ 
+      error: 'Bookmarks not available', 
+      message: 'MongoDB not configured - bookmark features disabled' 
+    });
+  });
+}
 
 // ===============================
 // Health Check
@@ -251,7 +301,12 @@ app.get('/health', (req, res) => {
     timestamp: new Date().toISOString(),
     service: 'nextjob-backend',
     version: '1.1.0',
-    cache: cacheService.getStatus()
+    cache: cacheService.getStatus(),
+    auth: dbConnected ? 'available' : 'not configured',
+    databases: {
+      mongodb: dbConnected ? 'connected' : 'not configured',
+      redis: cacheService.getStatus().redis
+    }
   });
 });
 
@@ -367,6 +422,10 @@ app.use((req, res) => {
 const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`NextJob backend running on port ${PORT}`);
   console.log(`Health check: /health`);
+  if (!dbConnected) {
+    console.log('NOTE: Authentication features are disabled because MongoDB is not configured');
+    console.log('To enable auth features, set MONGODB_URI in your .env file');
+  }
 });
 
 // ===============================

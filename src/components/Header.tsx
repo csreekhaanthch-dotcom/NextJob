@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Briefcase, Home, List, Menu, X, User, Heart, LogOut } from 'lucide-react';
+import { Search, Briefcase, Home, List, Menu, X, User, Heart, LogOut, AlertTriangle } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import LoginModal from './LoginModal';
@@ -10,9 +10,13 @@ const Header: React.FC = () => {
   const [isLoginModalOpen, setIsLoginModalOpen] = React.useState(false);
   const [authMode, setAuthMode] = React.useState<'login' | 'register'>('login');
   
-  const { user, logout, isAuthenticated } = useAuth();
+  const { user, logout, isAuthenticated, authAvailable } = useAuth();
   
   const openLoginModal = (mode: 'login' | 'register' = 'login') => {
+    if (!authAvailable) {
+      alert('Authentication features are not available because MongoDB is not configured.\n\nTo enable these features:\n1. Install MongoDB locally or use MongoDB Atlas\n2. Set MONGODB_URI in your backend .env file\n3. Restart the backend server');
+      return;
+    }
     setAuthMode(mode);
     setIsLoginModalOpen(true);
   };
@@ -103,7 +107,7 @@ const Header: React.FC = () => {
                   </div>
                 </div>
               </div>
-            ) : (
+            ) : authAvailable ? (
               <>
                 <button
                   onClick={() => openLoginModal('login')}
@@ -118,6 +122,11 @@ const Header: React.FC = () => {
                   Sign Up
                 </button>
               </>
+            ) : (
+              <div className="flex items-center text-yellow-600 bg-yellow-50 px-3 py-1 rounded-full text-sm">
+                <AlertTriangle className="h-4 w-4 mr-1" />
+                <span>Auth Disabled</span>
+              </div>
             )}
           </div>
           
@@ -211,7 +220,7 @@ const Header: React.FC = () => {
                       <span>Logout</span>
                     </button>
                   </div>
-                ) : (
+                ) : authAvailable ? (
                   <div className="flex space-x-2 px-4">
                     <button
                       onClick={() => {
@@ -231,6 +240,11 @@ const Header: React.FC = () => {
                     >
                       Sign Up
                     </button>
+                  </div>
+                ) : (
+                  <div className="px-4 py-2 text-yellow-700 bg-yellow-50 rounded-lg text-sm flex items-center">
+                    <AlertTriangle className="h-4 w-4 mr-2 flex-shrink-0" />
+                    <span>Auth features disabled - MongoDB not configured</span>
                   </div>
                 )}
               </div>
