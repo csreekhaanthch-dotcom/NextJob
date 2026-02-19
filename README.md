@@ -50,7 +50,7 @@ A modern job board aggregator that fetches job listings from multiple sources us
 
 6. Run the development server:
    ```bash
-   npm run dev
+   npm run start:dev
    ```
    
    This will start:
@@ -105,6 +105,11 @@ To run locally:
    ```bash
    npm install
    npm run dev
+   ```
+
+3. Or run both simultaneously:
+   ```bash
+   npm run start:dev
    ```
 
 ## Notes
