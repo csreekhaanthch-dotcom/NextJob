@@ -1,14 +1,12 @@
-const redis = require('redis');
 const NodeCache = require('node-cache');
 const winston = require('winston');
 
 class RedisService {
   constructor() {
-    this.redisClient = null;
-    this.isConnected = false;
     this.fallbackCache = new NodeCache({ stdTTL: 300 }); // 5 minutes fallback cache
+    this.isConnected = false;
     
-    // Initialize Redis if REDIS_URL is provided
+    // Try to initialize Redis if REDIS_URL is provided
     if (process.env.REDIS_URL) {
       this.initRedis();
     }
@@ -16,6 +14,7 @@ class RedisService {
 
   async initRedis() {
     try {
+      const redis = await import('redis');
       this.redisClient = redis.createClient({
         url: process.env.REDIS_URL,
         socket: {

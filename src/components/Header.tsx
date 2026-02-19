@@ -1,10 +1,25 @@
 import React from 'react';
-import { Search, Briefcase, Home, List, Menu, X } from 'lucide-react';
+import { Search, Briefcase, Home, List, Menu, X, User, Heart, LogOut } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import LoginModal from './LoginModal';
 
 const Header: React.FC = () => {
   const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
+  const [isLoginModalOpen, setIsLoginModalOpen] = React.useState(false);
+  const [authMode, setAuthMode] = React.useState<'login' | 'register'>('login');
+  
+  const { user, logout, isAuthenticated } = useAuth();
+  
+  const openLoginModal = (mode: 'login' | 'register' = 'login') => {
+    setAuthMode(mode);
+    setIsLoginModalOpen(true);
+  };
+  
+  const closeLoginModal = () => {
+    setIsLoginModalOpen(false);
+  };
   
   return (
     <header className="sticky top-0 z-50 backdrop-blur-lg bg-white/90 border-b border-gray-200 shadow-sm">
@@ -46,7 +61,65 @@ const Header: React.FC = () => {
               <List className="h-4 w-4" />
               <span>Browse Jobs</span>
             </Link>
+            {isAuthenticated && (
+              <Link 
+                to="/bookmarks" 
+                className={`flex items-center space-x-1 font-medium transition-all duration-200 ${
+                  location.pathname === '/bookmarks' 
+                    ? 'text-blue-600 font-semibold' 
+                    : 'text-gray-600 hover:text-blue-600'
+                }`}
+              >
+                <Heart className="h-4 w-4" />
+                <span>Bookmarks</span>
+              </Link>
+            )}
           </nav>
+          
+          {/* Auth Buttons */}
+          <div className="hidden md:flex items-center space-x-3">
+            {isAuthenticated ? (
+              <div className="flex items-center space-x-3">
+                <Link 
+                  to="/bookmarks"
+                  className="flex items-center px-4 py-2 text-gray-700 hover:text-blue-600 transition-colors"
+                >
+                  <Heart className="h-5 w-5 mr-1" />
+                  <span>Bookmarks</span>
+                </Link>
+                <div className="relative group">
+                  <button className="flex items-center space-x-2 px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
+                    <User className="h-5 w-5" />
+                    <span>{user?.name.split(' ')[0]}</span>
+                  </button>
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 hidden group-hover:block z-50">
+                    <button
+                      onClick={logout}
+                      className="flex items-center w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-100 transition-colors"
+                    >
+                      <LogOut className="h-4 w-4 mr-2" />
+                      <span>Logout</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <>
+                <button
+                  onClick={() => openLoginModal('login')}
+                  className="px-4 py-2 text-gray-700 hover:text-blue-600 transition-colors"
+                >
+                  Sign In
+                </button>
+                <button
+                  onClick={() => openLoginModal('register')}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Sign Up
+                </button>
+              </>
+            )}
+          </div>
           
           {/* Search Bar */}
           <div className="hidden md:block relative w-80">
@@ -97,6 +170,70 @@ const Header: React.FC = () => {
                 <List className="h-5 w-5" />
                 <span>Browse Jobs</span>
               </Link>
+              {isAuthenticated && (
+                <Link 
+                  to="/bookmarks" 
+                  className={`flex items-center space-x-2 py-2 px-4 rounded-lg ${
+                    location.pathname === '/bookmarks' 
+                      ? 'bg-blue-50 text-blue-600 font-medium' 
+                      : 'text-gray-700 hover:bg-gray-100'
+                  }`}
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  <Heart className="h-5 w-5" />
+                  <span>Bookmarks</span>
+                </Link>
+              )}
+              
+              {/* Mobile Auth */}
+              <div className="pt-2 border-t border-gray-200">
+                {isAuthenticated ? (
+                  <div className="space-y-2">
+                    <div className="px-4 py-2 text-gray-700">
+                      Hello, {user?.name}
+                    </div>
+                    <Link 
+                      to="/bookmarks"
+                      className="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      <Heart className="h-5 w-5 mr-2" />
+                      <span>Bookmarks</span>
+                    </Link>
+                    <button
+                      onClick={() => {
+                        logout();
+                        setIsMenuOpen(false);
+                      }}
+                      className="flex items-center w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-100 rounded-lg"
+                    >
+                      <LogOut className="h-5 w-5 mr-2" />
+                      <span>Logout</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex space-x-2 px-4">
+                    <button
+                      onClick={() => {
+                        openLoginModal('login');
+                        setIsMenuOpen(false);
+                      }}
+                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                    >
+                      Sign In
+                    </button>
+                    <button
+                      onClick={() => {
+                        openLoginModal('register');
+                        setIsMenuOpen(false);
+                      }}
+                      className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    >
+                      Sign Up
+                    </button>
+                  </div>
+                )}
+              </div>
               
               {/* Mobile Search */}
               <div className="relative mt-2">
@@ -113,6 +250,13 @@ const Header: React.FC = () => {
           </div>
         )}
       </div>
+      
+      <LoginModal 
+        isOpen={isLoginModalOpen} 
+        onClose={closeLoginModal} 
+        mode={authMode}
+        setMode={setAuthMode}
+      />
     </header>
   );
 };
