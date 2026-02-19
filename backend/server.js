@@ -48,22 +48,18 @@ app.get('/health', (req, res) => {
 
 // Jobs endpoint - fetch from Adzuna API
 app.get('/api/jobs', async (req, res) => {
+  const { search = '', location = '', page = 1, limit = 12 } = req.query;
+
   try {
-    const { search = '', location = '', page = 1, limit = 12 } = req.query;
-
-    const ADZUNA_API_URL = `https://api.adzuna.com/v1/api/jobs/us/search/${page}`;
-    const params = {
-      app_id: process.env.ADZUNA_APP_ID,
-      app_key: process.env.ADZUNA_APP_KEY,
-      results_per_page: limit,
-      what: search,
-      where: location,
-      content_type: 'application/json',
-    };
-
-    const response = await axios.get(ADZUNA_API_URL, {
-      params,
-      timeout: 7000, // 7-second timeout
+    const response = await axios.get('https://api.adzuna.com/v1/api/jobs/us/search/' + page, {
+      params: {
+        app_id: process.env.ADZUNA_APP_ID,
+        app_key: process.env.ADZUNA_API_KEY,
+        what: search,
+        where: location,
+        results_per_page: limit,
+        content-type: 'application/json'
+      }
     });
 
     const jobs = response.data.results.map(job => ({
@@ -73,31 +69,23 @@ app.get('/api/jobs', async (req, res) => {
       location: job.location.display_name,
       description: job.description,
       url: job.redirect_url,
-      salary: job.salary_min && job.salary_max 
-        ? `$${job.salary_min.toLocaleString()} - $${job.salary_max.toLocaleString()}` 
-        : 'Not specified',
-      posted_date: new Date(job.created).getTime() / 1000,
-      tags: ['Full-time', 'Remote', 'Tech', 'Engineering'], // optional
+      salary: job.salary_is_predicted ? `~$${job.salary_min} - $${job.salary_max}` : null,
+      posted_date: Math.floor(new Date(job.created).getTime() / 1000),
+      tags: [job.contract_time, job.category.label]
     }));
 
     res.json({
       jobs,
       total: response.data.count,
       page: parseInt(page),
-      totalPages: Math.ceil(response.data.count / limit),
+      totalPages: Math.ceil(response.data.count / parseInt(limit))
     });
-  } catch (error) {
-    console.error('Error fetching jobs:', error.message);
-    if (error.code === 'ECONNABORTED') {
-      res.status(504).json({ error: 'Request timeout', message: 'Backend took too long to respond' });
-    } else if (error.response) {
-      res.status(error.response.status).json({ error: 'API Error', message: error.response.data });
-    } else {
-      res.status(500).json({ error: 'Server Error', message: error.message });
-    }
+
+  } catch (err) {
+    console.error('Adzuna API error:', err.message);
+    res.status(500).json({ error: 'JSearch API error', message: err.message });
   }
 });
-
 // Single job endpoint
 app.get('/api/jobs/:id', async (req, res) => {
   try {
