@@ -1,7 +1,11 @@
+// server.js
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path');
+const axios = require('axios');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 
 // Load environment variables
 dotenv.config();
@@ -10,87 +14,101 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // Middleware
-app.use(cors());
+app.use(helmet()); // Security headers
+app.use(cors({
+  origin: process.env.FRONTEND_URL || '*', // Only allow your frontend domain
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// --- Removed frontend serving ---
-// In this Render setup, frontend is deployed separately, so serving /dist is unnecessary.
-// if (process.env.NODE_ENV === 'production') {
-//   app.use(express.static(path.join(__dirname, '../dist')));
-  
-//   // Handle SPA routing
-//   app.get('*', (req, res) => {
-//     res.sendFile(path.join(__dirname, '../dist/index.html'));
-//   });
-// }
+// Rate limiting (100 requests per 15 min per IP)
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+});
+app.use(limiter);
 
+// Serve static files in production
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, '../dist')));
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../dist/index.html'));
+  });
+}
 
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({ 
-    status: 'ok', 
+    status: 'ok',
     timestamp: new Date().toISOString(),
     service: 'nextjob-backend',
     version: '1.0.0'
   });
 });
 
-// Mock jobs endpoint for demonstration
-app.get('/api/jobs', (req, res) => {
-  const { search = '', location = '', page = 1, limit = 12 } = req.query;
-  
-  // Generate mock jobs data
-  const mockJobs = Array.from({ length: 20 }, (_, i) => ({
-    id: `job-${i + 1}`,
-    title: `${['Software', 'Frontend', 'Backend', 'DevOps', 'Data'][i % 5]} Engineer`,
-    company: `Company ${(i % 8) + 1}`,
-    location: location || ['San Francisco, CA', 'New York, NY', 'Remote', 'Austin, TX', 'Seattle, WA'][i % 5],
-    description: `We are looking for a skilled ${['Software', 'Frontend', 'Backend', 'DevOps', 'Data'][i % 5]} engineer to join our team. You will work on exciting projects and help shape the future of our company.`,
-    url: `https://example.com/jobs/job-${i + 1}`,
-    salary: `$${(80 + i * 10).toLocaleString()}`, // Simplified salary
-    posted_date: Math.floor(Date.now() / 1000) - (i * 86400), // Days ago
-    tags: [['Full-time'], ['Remote'], ['Tech'], ['Engineering']][i % 4]
-  }));
-  
-  // Filter by search term if provided
-  const filteredJobs = search 
-    ? mockJobs.filter(job => 
-        job.title.toLowerCase().includes(search.toLowerCase()) ||
-        job.company.toLowerCase().includes(search.toLowerCase())
-      )
-    : mockJobs;
-  
-  // Pagination
-  const startIndex = (page - 1) * limit;
-  const paginatedJobs = filteredJobs.slice(startIndex, startIndex + parseInt(limit));
-  
-  res.json({
-    jobs: paginatedJobs,
-    total: filteredJobs.length,
-    page: parseInt(page),
-    totalPages: Math.ceil(filteredJobs.length / parseInt(limit))
-  });
+// Jobs endpoint - fetch from Adzuna API
+app.get('/api/jobs', async (req, res) => {
+  try {
+    const { search = '', location = '', page = 1, limit = 12 } = req.query;
+
+    const ADZUNA_API_URL = `https://api.adzuna.com/v1/api/jobs/us/search/${page}`;
+    const params = {
+      app_id: process.env.ADZUNA_APP_ID,
+      app_key: process.env.ADZUNA_APP_KEY,
+      results_per_page: limit,
+      what: search,
+      where: location,
+      content_type: 'application/json',
+    };
+
+    const response = await axios.get(ADZUNA_API_URL, {
+      params,
+      timeout: 7000, // 7-second timeout
+    });
+
+    const jobs = response.data.results.map(job => ({
+      id: job.id,
+      title: job.title,
+      company: job.company.display_name,
+      location: job.location.display_name,
+      description: job.description,
+      url: job.redirect_url,
+      salary: job.salary_min && job.salary_max 
+        ? `$${job.salary_min.toLocaleString()} - $${job.salary_max.toLocaleString()}` 
+        : 'Not specified',
+      posted_date: new Date(job.created).getTime() / 1000,
+      tags: ['Full-time', 'Remote', 'Tech', 'Engineering'], // optional
+    }));
+
+    res.json({
+      jobs,
+      total: response.data.count,
+      page: parseInt(page),
+      totalPages: Math.ceil(response.data.count / limit),
+    });
+  } catch (error) {
+    console.error('Error fetching jobs:', error.message);
+    if (error.code === 'ECONNABORTED') {
+      res.status(504).json({ error: 'Request timeout', message: 'Backend took too long to respond' });
+    } else if (error.response) {
+      res.status(error.response.status).json({ error: 'API Error', message: error.response.data });
+    } else {
+      res.status(500).json({ error: 'Server Error', message: error.message });
+    }
+  }
 });
 
 // Single job endpoint
-app.get('/api/jobs/:id', (req, res) => {
-  const jobId = req.params.id;
-  
-  // Create a mock job based on the ID
-  const job = {
-    id: jobId,
-    title: `Software Engineer - ${jobId}`,
-    company: 'Tech Company Inc.',
-    location: 'San Francisco, CA',
-    description: 'We are seeking a talented Software Engineer to join our dynamic team. You will be responsible for developing and maintaining high-quality software solutions.',
-    url: `https://example.com/jobs/${jobId}`,
-    salary: '$120,000 - $150,000',
-    posted_date: Math.floor(Date.now() / 1000) - 86400, // Yesterday
-    tags: ['Full-time', 'Remote', 'Tech', 'Engineering']
-  };
-  
-  res.json(job);
+app.get('/api/jobs/:id', async (req, res) => {
+  try {
+    const jobId = req.params.id;
+
+    // Adzuna doesn't have single job fetch, so fallback to search by ID in results
+    res.status(501).json({ error: 'Single job fetch not implemented, use /api/jobs with search query' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Server Error', message: error.message });
+  }
 });
 
 // Error handling middleware
@@ -116,14 +134,9 @@ const server = app.listen(PORT, '0.0.0.0', () => {
 // Graceful shutdown
 process.on('SIGTERM', () => {
   console.log('SIGTERM received, shutting down gracefully');
-  server.close(() => {
-    console.log('Process terminated');
-  });
+  server.close(() => console.log('Process terminated'));
 });
-
 process.on('SIGINT', () => {
   console.log('SIGINT received, shutting down gracefully');
-  server.close(() => {
-    console.log('Process terminated');
-  });
+  server.close(() => console.log('Process terminated'));
 });
