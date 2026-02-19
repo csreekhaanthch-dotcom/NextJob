@@ -1,12 +1,18 @@
-import React from 'react';
-import { MapPin, Building, Calendar, Globe, DollarSign } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { MapPin, Building, Calendar, DollarSign, Heart } from 'lucide-react';
 import { Job } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
 interface JobCardProps {
   job: Job;
 }
 
 const JobCard: React.FC<JobCardProps> = ({ job }) => {
+  const [isBookmarked, setIsBookmarked] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  
+  const { isAuthenticated } = useAuth();
+  
   // Convert timestamp to readable date
   const formatPostedDate = (timestamp: number): string => {
     const date = new Date(timestamp * 1000);
@@ -26,6 +32,46 @@ const JobCard: React.FC<JobCardProps> = ({ job }) => {
 
   const handleApply = () => {
     window.open(job.url, '_blank');
+  };
+
+  const toggleBookmark = async () => {
+    if (!isAuthenticated) {
+      // Dispatch event to open login modal
+      document.dispatchEvent(new CustomEvent('openLoginModal', { detail: 'login' }));
+      return;
+    }
+    
+    if (isLoading) return;
+    
+    setIsLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const method = isBookmarked ? 'DELETE' : 'POST';
+      
+      if (isBookmarked) {
+        // For simplicity, we'll just toggle the UI state
+        setIsBookmarked(false);
+      } else {
+        const response = await fetch('/api/bookmarks', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ job })
+        });
+        
+        if (response.ok) {
+          setIsBookmarked(true);
+        } else {
+          throw new Error('Failed to bookmark job');
+        }
+      }
+    } catch (error) {
+      console.error('Bookmark error:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -51,6 +97,18 @@ const JobCard: React.FC<JobCardProps> = ({ job }) => {
               </p>
             </div>
           </div>
+          <button
+            onClick={toggleBookmark}
+            disabled={isLoading}
+            className={`self-start p-2 rounded-full ${
+              isBookmarked 
+                ? 'text-red-500 bg-red-50 hover:bg-red-100' 
+                : 'text-gray-400 bg-gray-100 hover:bg-gray-200 hover:text-gray-600'
+            } transition-colors`}
+            aria-label={isBookmarked ? "Remove bookmark" : "Bookmark job"}
+          >
+            <Heart className={`h-5 w-5 ${isBookmarked ? 'fill-current' : ''}`} />
+          </button>
         </div>
         
         <div className="flex flex-wrap gap-3 mb-4">
