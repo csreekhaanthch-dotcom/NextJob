@@ -14,6 +14,7 @@ app.use(express.json());
 const searchSchema = Joi.object({
   what: Joi.string().allow('', null).max(200),
   where: Joi.string().allow('', null).max(200),
+  search: Joi.string().allow('', null).max(200),
   page: Joi.number().min(1).max(100).default(1),
   limit: Joi.number().min(1).max(100).default(20),
   sortBy: Joi.string().allow('', null),
@@ -22,7 +23,7 @@ const searchSchema = Joi.object({
   days: Joi.number().allow(null),
   category: Joi.string().allow('', null),
   sources: Joi.string().allow('', null),
-});
+}).unknown(true); // Allow unknown parameters
 
 // Health check
 app.get('/health', (req, res) => {
@@ -37,14 +38,16 @@ app.get('/api/jobs', async (req, res) => {
       return res.status(400).json({ error: 'Invalid parameters', details: error.details });
     }
 
-    const { what, where, page = 1, sources } = value;
+    // Support both 'what' and 'search' parameters
+    const query = value.what || value.search || '';
+    const { where, page = 1, sources } = value;
 
     const sourceList = sources
       ? sources.split(',').map(s => s.trim()).filter(Boolean)
       : ['adzuna', 'remotive', 'arbeitnow'];
 
     const allJobs = await jobScraper.fetchAllJobs({
-      query: what || '',
+      query: query,
       location: where || '',
       page: parseInt(page),
       sources: sourceList,
