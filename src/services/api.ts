@@ -8,8 +8,31 @@ export interface Job {
   description: string;
   url: string;
   salary?: string;
+  salaryMin?: number;
+  salaryMax?: number;
   posted_date: number;
   tags?: string[];
+  skills?: string[];
+  jobType?: string;
+  experienceLevel?: string;
+  workSetting?: 'remote' | 'hybrid' | 'on-site';
+  industry?: string;
+}
+
+export interface SearchJobsParams {
+  search?: string;
+  location?: string;
+  page?: number;
+  limit?: number;
+  skills?: string[];
+  jobTypes?: string[];
+  experienceLevels?: string[];
+  datePosted?: string;
+  salaryRange?: string;
+  workSettings?: string[];
+  industries?: string[];
+  distance?: number;
+  sortBy?: 'recent' | 'relevant' | 'salary_high' | 'salary_low';
 }
 
 export interface SearchJobsResponse {
@@ -21,26 +44,12 @@ export interface SearchJobsResponse {
 
 class ApiService {
   private baseUrl: string;
-
-  constructor(baseUrl: string) {
-    this.baseUrl = baseUrl;
-  }
+  constructor(baseUrl: string) { this.baseUrl = baseUrl; }
 
   private async handleResponse(response: Response) {
     if (!response.ok) {
       const errorText = await response.text();
-      let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
-      
-      try {
-        const errorJson = JSON.parse(errorText);
-        errorMessage = errorJson.error || errorJson.message || errorMessage;
-      } catch (e) {
-        if (errorText) {
-          errorMessage = errorText;
-        }
-      }
-      
-      throw new Error(errorMessage);
+      throw new Error(errorText || `HTTP ${response.status}`);
     }
     return response.json();
   }
@@ -48,12 +57,8 @@ class ApiService {
   private async fetchWithTimeout(url: string, options: RequestInit = {}, timeout: number = 10000): Promise<Response> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
-    
     try {
-      const response = await fetch(url, {
-        ...options,
-        signal: controller.signal
-      });
+      const response = await fetch(url, { ...options, signal: controller.signal });
       clearTimeout(timeoutId);
       return response;
     } catch (error) {
@@ -62,68 +67,75 @@ class ApiService {
     }
   }
 
-  async searchJobs(params: { 
-    search?: string; 
-    location?: string; 
-    page?: number; 
-    limit?: number 
-  }): Promise<SearchJobsResponse> {
+  async searchJobs(params: SearchJobsParams): Promise<SearchJobsResponse> {
     const urlParams = new URLSearchParams();
-    
     if (params.search) urlParams.append('search', params.search);
     if (params.location) urlParams.append('location', params.location);
     if (params.page) urlParams.append('page', String(params.page));
     if (params.limit) urlParams.append('limit', String(params.limit));
+    if (params.sortBy) urlParams.append('sortBy', params.sortBy);
+    if (params.skills) params.skills.forEach(s => urlParams.append('skills', s));
+    if (params.jobTypes) params.jobTypes.forEach(t => urlParams.append('jobType', t));
+    if (params.experienceLevels) params.experienceLevels.forEach(l => urlParams.append('experienceLevel', l));
+    if (params.datePosted && params.datePosted !== 'all') urlParams.append('datePosted', params.datePosted);
+    if (params.salaryRange) urlParams.append('salaryRange', params.salaryRange);
+    if (params.workSettings) params.workSettings.forEach(w => urlParams.append('workSetting', w));
+    if (params.industries) params.industries.forEach(i => urlParams.append('industry', i));
 
     const url = `${this.baseUrl}/api/jobs?${urlParams}`;
-    
     try {
-      const response = await this.fetchWithTimeout(url, {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-      
+      const response = await this.fetchWithTimeout(url, { headers: { 'Content-Type': 'application/json' } });
       return this.handleResponse(response);
     } catch (error) {
-      if (error instanceof TypeError) {
-        if (error.message === 'Failed to fetch') {
-          throw new Error('Unable to connect to the backend server. Please ensure the backend is running and accessible.');
-        }
-        throw new Error(`Network error: ${error.message}`);
-      } else if ((error as Error).name === 'AbortError') {
-        throw new Error('Request timeout - the backend is taking too long to respond');
+      if (error instanceof TypeError && error.message === 'Failed to fetch') {
+        throw new Error('Unable to connect to backend server');
       }
       throw error;
     }
   }
 
   async getJob(id: string): Promise<Job> {
-    // For now, we'll simulate getting a single job by searching and finding by ID
     const response = await this.searchJobs({});
     const job = response.jobs.find(j => j.id === id);
-    if (!job) {
-      throw new Error('Job not found');
-    }
+    if (!job) throw new Error('Job not found');
     return job;
   }
 
   async checkHealth(): Promise<any> {
-    try {
-      const healthUrl = `${this.baseUrl}/health`;
-      const response = await this.fetchWithTimeout(healthUrl, {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }, 5000); // 5 second timeout for health check
-      
-      return this.handleResponse(response);
-    } catch (error) {
-      if ((error as Error).name === 'AbortError') {
-        throw new Error('Backend health check timeout - backend may be unresponsive');
-      }
-      throw new Error('Unable to connect to the backend server. Please ensure the backend is running.');
+    const response = await this.fetchWithTimeout(`${this.baseUrl}/health`, { headers: { 'Content-Type': 'application/json' } }, 5000);
+    return this.handleResponse(response);
+  }
+
+  filterJobsClientSide(jobs: Job[], params: SearchJobsParams): Job[] {
+    let filtered = [...jobs];
+    if (params.skills && params.skills.length > 0) {
+      filtered = filtered.filter(job => {
+        const jobSkills = job.skills || job.tags || [];
+        return params.skills!.some(s => jobSkills.some(js => js.toLowerCase().includes(s.toLowerCase())));
+      });
     }
+    if (params.jobTypes && params.jobTypes.length > 0) {
+      filtered = filtered.filter(job => job.jobType && params.jobTypes!.includes(job.jobType));
+    }
+    if (params.experienceLevels && params.experienceLevels.length > 0) {
+      filtered = filtered.filter(job => job.experienceLevel && params.experienceLevels!.includes(job.experienceLevel));
+    }
+    if (params.workSettings && params.workSettings.length > 0) {
+      filtered = filtered.filter(job => job.workSetting && params.workSettings!.includes(job.workSetting));
+    }
+    if (params.datePosted && params.datePosted !== 'all') {
+      const now = Date.now();
+      const dayMs = 86400000;
+      const days: Record<string, number> = { '24h': 1, '3d': 3, '7d': 7, '14d': 14, '30d': 30 };
+      const minDate = now - (days[params.datePosted] || 0) * dayMs;
+      filtered = filtered.filter(job => job.posted_date >= minDate / 1000);
+    }
+    if (params.sortBy) {
+      if (params.sortBy === 'recent') filtered.sort((a, b) => b.posted_date - a.posted_date);
+      else if (params.sortBy === 'salary_high') filtered.sort((a, b) => (b.salaryMax || 0) - (a.salaryMax || 0));
+      else if (params.sortBy === 'salary_low') filtered.sort((a, b) => (a.salaryMin || Infinity) - (b.salaryMin || Infinity));
+    }
+    return filtered;
   }
 }
 
