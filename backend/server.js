@@ -5,11 +5,41 @@ const axios = require('axios');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
+const winston = require('winston');
+const Joi = require('joi');
 
 dotenv.config();
 
+// Winston Logger
+const logger = winston.createLogger({
+  level: process.env.LOG_LEVEL || 'info',
+  format: winston.format.combine(
+    winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+    winston.format.errors({ stack: true }),
+    winston.format.json()
+  ),
+  defaultMeta: { service: 'nextjob-backend' },
+  transports: [
+    new winston.transports.Console({
+      format: winston.format.combine(
+        winston.format.colorize(),
+        winston.format.printf(({ level, message, timestamp }) => 
+          `${timestamp} [${level}]: ${message}`)
+      )
+    })
+  ]
+});
+
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Input Validation Schema
+const jobsQuerySchema = Joi.object({
+  search: Joi.string().max(200).trim().allow('').default(''),
+  location: Joi.string().max(200).trim().allow('').default(''),
+  page: Joi.number().integer().min(1).max(1000).default(1),
+  limit: Joi.number().integer().min(1).max(50).default(12)
+});
 
 // Bounded LRU Cache
 const CACHE_TTL = 5 * 60 * 1000;
@@ -77,6 +107,12 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 100 }));
 
+// Request logging
+app.use((req, res, next) => {
+  logger.info(`${req.method} ${req.path}`);
+  next();
+});
+
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, '../dist')));
   app.get(/^\/(?!api).*/, (req, res) => {
@@ -95,16 +131,27 @@ app.get('/health', (req, res) => {
 });
 
 app.get('/api/jobs', async (req, res) => {
-  const { search = '', location = '', page = 1, limit = 12 } = req.query;
+  // Validate input
+  const { error, value } = jobsQuerySchema.validate(req.query);
+  if (error) {
+    logger.warn('Invalid query parameters', { errors: error.details });
+    return res.status(400).json({
+      error: 'Invalid parameters',
+      details: error.details.map(d => ({ field: d.path.join('.'), message: d.message }))
+    });
+  }
+
+  const { search, location, page, limit } = value;
   const cacheKey = `${search}-${location}-${page}-${limit}`;
   
   const cachedData = cache.get(cacheKey);
   if (cachedData) {
-    console.log("Serving from cache");
+    logger.info('Serving from cache', { cacheKey });
     return res.json(cachedData);
   }
 
   try {
+    logger.info('Fetching jobs from Adzuna', { search, location, page, limit });
     const response = await axios.get(
       `https://api.adzuna.com/v1/api/jobs/us/search/${page}`,
       {
@@ -141,12 +188,13 @@ app.get('/api/jobs', async (req, res) => {
     };
 
     cache.set(cacheKey, responseData);
+    logger.info('Jobs fetched successfully', { count: jobs.length });
     res.json(responseData);
   } catch (error) {
-    console.error("Adzuna API error:", error.response?.data || error.message);
+    logger.error('Adzuna API error', { error: error.message });
     res.status(error.response?.status || 500).json({
-      error: "Adzuna API Error",
-      message: error.response?.data || error.message
+      error: 'Job Search Error',
+      message: process.env.NODE_ENV === 'production' ? 'Failed to fetch jobs' : error.message
     });
   }
 });
@@ -171,7 +219,7 @@ app.delete('/api/bookmarks/:jobId', (req, res) => {
 });
 
 app.use((err, req, res, next) => {
-  console.error("Unhandled Error:", err.stack);
+  logger.error('Unhandled error', { error: err.message, stack: err.stack });
   res.status(500).json({
     error: 'Something went wrong!',
     message: process.env.NODE_ENV === 'development' ? err.message : 'Internal Server Error'
@@ -179,19 +227,21 @@ app.use((err, req, res, next) => {
 });
 
 app.use((req, res) => {
+  logger.warn(`404 - Route not found: ${req.method} ${req.path}`);
   res.status(404).json({ error: 'Route not found' });
 });
 
 const server = app.listen(PORT, '0.0.0.0', () => {
-  console.log(`NextJob backend running on port ${PORT}`);
-  console.log(`Health check: /health`);
+  logger.info(`NextJob backend running on port ${PORT}`);
 });
 
 process.on('SIGTERM', () => {
-  console.log('SIGTERM received. Shutting down gracefully...');
-  server.close(() => console.log('Process terminated'));
+  logger.info('SIGTERM received. Shutting down gracefully...');
+  server.close(() => { logger.info('Process terminated'); process.exit(0); });
 });
 process.on('SIGINT', () => {
-  console.log('SIGINT received. Shutting down gracefully...');
-  server.close(() => console.log('Process terminated'));
+  logger.info('SIGINT received. Shutting down gracefully...');
+  server.close(() => { logger.info('Process terminated'); process.exit(0); });
 });
+
+module.exports = { app, cache, logger };
