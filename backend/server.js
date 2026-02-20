@@ -3,6 +3,7 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const axios = require('axios');
 const helmet = require('helmet');
+const jobScraper = require('./scraper');
 const rateLimit = require('express-rate-limit');
 const winston = require('winston');
 const Joi = require('joi');
@@ -68,64 +69,42 @@ async function fetchJobs(search, location, page, limit) {
 
 app.get('/api/jobs', async (req, res) => {
   try {
-    const { error, value } = jobsQuerySchema.validate(req.query);
-    if (error) return res.status(400).json({ error: error.details[0].message });
-    
-    const { search, location, page, limit, sortBy } = value;
-    
-    let jobs = [];
-    let total = 0;
-    
-    const data = await fetchJobs(search, location, page, limit);
-    if (data && data.results) {
-      jobs = data.results.map(job => ({
-        id: job.id,
-        title: job.title,
-        company: job.company?.display_name || 'Unknown',
-        location: job.location?.display_name || 'Remote',
-        description: job.description || '',
-        url: job.redirect_url,
-        salary: job.salary_min && job.salary_max ? `$${Math.round(job.salary_min/1000)}K-$${Math.round(job.salary_max/1000)}K` : null,
-        salaryMin: job.salary_min,
-        salaryMax: job.salary_max,
-        posted_date: job.created ? Math.floor(new Date(job.created).getTime() / 1000) : Date.now(),
-        tags: job.category ? [job.category.label] : [],
-        jobType: job.contract_time || 'full-time',
-        workSetting: 'on-site'
-      }));
-      total = data.count || jobs.length;
-    } else {
-      total = 50;
-      const now = Date.now();
-      const titles = ['Software Engineer', 'Frontend Developer', 'Backend Developer', 'Full Stack Engineer', 'DevOps Engineer', 'Data Scientist', 'Product Manager', 'UI/UX Designer'];
-      const companies = ['Google', 'Microsoft', 'Amazon', 'Meta', 'Apple', 'Netflix', 'Stripe', 'Airbnb'];
-      const locations = ['San Francisco, CA', 'New York, NY', 'Seattle, WA', 'Austin, TX', 'Remote', 'Boston, MA'];
-      for (let i = 0; i < limit; i++) {
-        jobs.push({
-          id: `sample-${page}-${i}`,
-          title: titles[i % titles.length],
-          company: companies[i % companies.length],
-          location: locations[i % locations.length],
-          description: `Exciting opportunity for a ${titles[i % titles.length]} to join our team.`,
-          url: 'https://example.com/apply',
-          salary: `$${100 + i * 10}K-$${130 + i * 10}K`,
-          salaryMin: (100 + i * 10) * 1000,
-          salaryMax: (130 + i * 10) * 1000,
-          posted_date: Math.floor((now - i * 86400000) / 1000),
-          tags: ['Tech', 'Full-time'],
-          jobType: 'full-time',
-          workSetting: i % 3 === 0 ? 'remote' : (i % 3 === 1 ? 'hybrid' : 'on-site')
-        });
-      }
-    }
+    const { what, where, page = 1, sources } = req.query;
 
-    if (sortBy === 'recent') jobs.sort((a, b) => b.posted_date - a.posted_date);
-    else if (sortBy === 'salary_high') jobs.sort((a, b) => (b.salaryMax || 0) - (a.salaryMax || 0));
-    else if (sortBy === 'salary_low') jobs.sort((a, b) => (a.salaryMin || Infinity) - (b.salaryMin || Infinity));
+    // Parse sources (default: all available)
+    let sourceList = sources
+      ? sources.split(',').map(s => s.trim()).filter(Boolean)
+      : ['adzuna', 'remotive', 'arbeitnow'];
 
-    res.json({ jobs, total, page, totalPages: Math.ceil(total / limit) });
-  } catch (err) {
-    logger.error(`Error: ${err.message}`);
+    // Fetch from all sources
+    const allJobs = await jobScraper.fetchAllJobs({
+      query: what || '',
+      location: where || '',
+      page: parseInt(page),
+      sources: sourceList,
+    });
+
+    // Paginate
+    const limit = 20;
+    const startIndex = (parseInt(page) - 1) * limit;
+    const paginatedJobs = allJobs.slice(startIndex, startIndex + limit);
+
+    // Source stats
+    const sourceStats = {};
+    allJobs.forEach(job => {
+      sourceStats[job.source] = (sourceStats[job.source] || 0) + 1;
+    });
+
+    res.json({
+      results: paginatedJobs,
+      count: paginatedJobs.length,
+      total: allJobs.length,
+      page: parseInt(page),
+      sources: sourceStats,
+    });
+
+  } catch (error) {
+    console.error('Error fetching jobs:', error);
     res.status(500).json({ error: 'Failed to fetch jobs' });
   }
 });
