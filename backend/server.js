@@ -10,16 +10,18 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
-// Validation schema
+// Validation schema - accepts all frontend parameters
 const searchSchema = Joi.object({
   what: Joi.string().allow('', null).max(200),
   where: Joi.string().allow('', null).max(200),
   page: Joi.number().min(1).max(100).default(1),
-  sort_by: Joi.string().allow(''),
-  sort_dir: Joi.string().allow(''),
+  limit: Joi.number().min(1).max(100).default(20),
+  sortBy: Joi.string().allow('', null),
+  sort_by: Joi.string().allow('', null),
+  sort_dir: Joi.string().allow('', null),
   days: Joi.number().allow(null),
-  category: Joi.string().allow(''),
-  sources: Joi.string().allow(''),
+  category: Joi.string().allow('', null),
+  sources: Joi.string().allow('', null),
 });
 
 // Health check
@@ -27,7 +29,7 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Jobs endpoint - returns format expected by frontend
+// Jobs endpoint
 app.get('/api/jobs', async (req, res) => {
   try {
     const { error, value } = searchSchema.validate(req.query);
@@ -37,7 +39,6 @@ app.get('/api/jobs', async (req, res) => {
 
     const { what, where, page = 1, sources } = value;
 
-    // Fetch from all sources
     const sourceList = sources
       ? sources.split(',').map(s => s.trim()).filter(Boolean)
       : ['adzuna', 'remotive', 'arbeitnow'];
@@ -49,7 +50,6 @@ app.get('/api/jobs', async (req, res) => {
       sources: sourceList,
     });
 
-    // Return in format frontend expects
     res.json({
       results: allJobs,
       count: allJobs.length,
@@ -64,18 +64,12 @@ app.get('/api/jobs', async (req, res) => {
   }
 });
 
-// API info
 app.get('/', (req, res) => {
-  res.json({ 
-    name: 'NextJob API', 
-    version: '2.0.0',
-    endpoints: { '/api/jobs': 'Search jobs', '/health': 'Health check' }
-  });
+  res.json({ name: 'NextJob API', version: '2.0.0' });
 });
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-  console.log('Sources: Adzuna, Remotive, Arbeitnow');
 });
 
 module.exports = app;
