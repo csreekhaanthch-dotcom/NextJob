@@ -20,7 +20,11 @@
     "noFallthroughCasesInSwitch": true,
     
     /* JSX support */
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+
+    /* Vitest types */
+    "types": ["vitest/globals"]
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": ["src/test", "**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx"]
 }
