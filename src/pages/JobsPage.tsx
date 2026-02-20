@@ -108,7 +108,7 @@ const JobsPage: React.FC = () => {
   useEffect(() => { fetchJobs(); }, [fetchJobs]);
 
   const sortedJobs = useMemo(() => {
-    if (!jobs.length) return [];
+    if (!jobs?.length) return [];
     const sorted = [...jobs];
     switch (sortBy) {
       case 'recent': return sorted.sort((a, b) => b.posted_date - a.posted_date);
