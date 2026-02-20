@@ -1,15 +1,19 @@
+// Single source of truth for Job type - matches backend API response
 export interface Job {
-  id: number;
+  id: string;
   title: string;
   company: string;
   location: string;
-  salary: string;
-  type: string;
-  posted: string;
   description: string;
-  tags: string[];
-  logo: string;
   url: string;
-  remote?: boolean;
-  experienceLevel?: string;
+  salary?: string;
+  posted_date: number;
+  tags?: string[];
+}
+
+export interface SearchJobsResponse {
+  jobs: Job[];
+  total: number;
+  page: number;
+  totalPages: number;
 }
