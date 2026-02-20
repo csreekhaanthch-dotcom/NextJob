@@ -219,7 +219,7 @@ const JobsPage: React.FC = () => {
                 <div className="flex items-start"><AlertCircle className="h-5 w-5 text-red-500 mt-0.5 mr-2" /><div><p className="text-red-800 dark:text-red-200 font-medium">Error loading jobs</p><p className="text-red-700 dark:text-red-300 text-sm mt-1">{error}</p><button type="button" className="mt-2 px-3 py-1 bg-red-100 dark:bg-red-800 text-red-700 dark:text-red-200 rounded text-sm flex items-center" onClick={fetchJobs}><RefreshCw className="h-4 w-4 mr-1" />Try Again</button></div></div>
               </div>
             )}
-            {!loading && !error && <p className="text-gray-600 dark:text-gray-400 mb-6">Showing <span className="font-semibold text-gray-900 dark:text-white">{sortedJobs.length}</span> of <span className="font-semibold text-gray-900 dark:text-white">{totalJobs.toLocaleString()}</span> jobs{totalPages > 1 && <span> • Page <span className="font-semibold">{page}</span> of <span className="font-semibold">{totalPages}</span></span>}</p>}
+            {!loading && !error && <p className="text-gray-600 dark:text-gray-400 mb-6">Showing <span className="font-semibold text-gray-900 dark:text-white">{sortedJobs.length}</span> of <span className="font-semibold text-gray-900 dark:text-white">{totalJobs?.toLocaleString() || 0}</span> jobs{totalPages > 1 && <span> • Page <span className="font-semibold">{page}</span> of <span className="font-semibold">{totalPages}</span></span>}</p>}
             {sortedJobs.length > 0 ? (
               <>
                 <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6' : 'space-y-4'}>{sortedJobs.map(job => <JobCard key={job.id} job={job} viewMode={viewMode} />)}</div>
