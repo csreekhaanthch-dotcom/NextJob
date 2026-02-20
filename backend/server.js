@@ -4,13 +4,11 @@ const dotenv = require('dotenv');
 const axios = require('axios');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
-const path = require('path');
 const winston = require('winston');
 const Joi = require('joi');
 
 dotenv.config();
 
-// Winston Logger
 const logger = winston.createLogger({
   level: process.env.LOG_LEVEL || 'info',
   format: winston.format.combine(
@@ -33,15 +31,38 @@ const logger = winston.createLogger({
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Input Validation Schema
+// Input Validation Schema - Updated to support new filters
 const jobsQuerySchema = Joi.object({
   search: Joi.string().max(200).trim().allow('').default(''),
   location: Joi.string().max(200).trim().allow('').default(''),
   page: Joi.number().integer().min(1).max(1000).default(1),
-  limit: Joi.number().integer().min(1).max(50).default(12)
+  limit: Joi.number().integer().min(1).max(50).default(12),
+  sortBy: Joi.string().valid('recent', 'relevant', 'salary_high', 'salary_low').default('recent'),
+  skills: Joi.alternatives().try(
+    Joi.string(),
+    Joi.array().items(Joi.string())
+  ),
+  jobType: Joi.alternatives().try(
+    Joi.string(),
+    Joi.array().items(Joi.string())
+  ),
+  experienceLevel: Joi.alternatives().try(
+    Joi.string(),
+    Joi.array().items(Joi.string())
+  ),
+  datePosted: Joi.string().valid('24h', '3d', '7d', '14d', '30d', 'all').optional(),
+  salaryRange: Joi.string().optional(),
+  workSetting: Joi.alternatives().try(
+    Joi.string(),
+    Joi.array().items(Joi.string())
+  ),
+  industry: Joi.alternatives().try(
+    Joi.string(),
+    Joi.array().items(Joi.string())
+  )
 });
 
-// Bounded LRU Cache
+// Cache
 const CACHE_TTL = 5 * 60 * 1000;
 const MAX_CACHE_SIZE = 100;
 
@@ -74,174 +95,112 @@ class BoundedCache {
     }
     this.cache.set(key, { data, timestamp: Date.now() });
   }
-  cleanup() {
-    const now = Date.now();
-    let cleaned = 0;
-    for (const [key, item] of this.cache.entries()) {
-      if (now - item.timestamp > this.ttl) {
-        this.cache.delete(key);
-        cleaned++;
-      }
-    }
-    return cleaned;
-  }
   getStats() {
     return {
       size: this.cache.size,
       maxSize: this.maxSize,
       ttl: this.ttl,
-      ...this.stats,
-      hitRate: this.stats.hits + this.stats.misses > 0 
-        ? ((this.stats.hits / (this.stats.hits + this.stats.misses)) * 100).toFixed(1) + '%'
-        : '0%'
+      ...this.stats
     };
   }
 }
 
 const cache = new BoundedCache(MAX_CACHE_SIZE, CACHE_TTL);
-setInterval(() => { cache.cleanup(); }, 5 * 60 * 1000);
 
+// Middleware
 app.use(helmet());
-app.use(cors({ origin: process.env.FRONTEND_URL || '*' }));
+app.use(cors());
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 100 }));
 
-// Request logging
-app.use((req, res, next) => {
-  logger.info(`${req.method} ${req.path}`);
-  next();
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100
 });
+app.use('/api/', limiter);
 
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../dist')));
-  app.get(/^\/(?!api).*/, (req, res) => {
-    res.sendFile(path.join(__dirname, '../dist/index.html'));
+// Adzuna API configuration
+const ADZUNA_APP_ID = process.env.ADZUNA_APP_ID;
+const ADZUNA_APP_KEY = process.env.ADZUNA_APP_KEY;
+const ADZUNA_BASE_URL = 'https://api.adzuna.com/v1/api/jobs/us/search';
+
+// Fetch jobs from Adzuna
+async function fetchJobsFromAdzuna(search, location, page, limit) {
+  const params = new URLSearchParams({
+    app_id: ADZUNA_APP_ID,
+    app_key: ADZUNA_APP_KEY,
+    results_per_page: limit,
+    what: search || '',
+    where: location || 'United States',
+    page: page,
+    'content-type': 'application/json'
   });
+
+  const url = `${ADZUNA_BASE_URL}?${params}`;
+  logger.info(`Fetching from Adzuna: ${url}`);
+  
+  const response = await axios.get(url);
+  return response.data;
 }
 
-app.get('/health', (req, res) => {
-  res.status(200).json({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    service: 'nextjob-backend',
-    version: '1.3.0',
-    cache: cache.getStats()
-  });
-});
-
+// Routes
 app.get('/api/jobs', async (req, res) => {
-  // Validate input
-  const { error, value } = jobsQuerySchema.validate(req.query);
-  if (error) {
-    logger.warn('Invalid query parameters', { errors: error.details });
-    return res.status(400).json({
-      error: 'Invalid parameters',
-      details: error.details.map(d => ({ field: d.path.join('.'), message: d.message }))
-    });
-  }
-
-  const { search, location, page, limit } = value;
-  const cacheKey = `${search}-${location}-${page}-${limit}`;
-  
-  const cachedData = cache.get(cacheKey);
-  if (cachedData) {
-    logger.info('Serving from cache', { cacheKey });
-    return res.json(cachedData);
-  }
-
   try {
-    logger.info('Fetching jobs from Adzuna', { search, location, page, limit });
-    const response = await axios.get(
-      `https://api.adzuna.com/v1/api/jobs/us/search/${page}`,
-      {
-        params: {
-          app_id: process.env.ADZUNA_APP_ID,
-          app_key: process.env.ADZUNA_API_KEY,
-          what: search,
-          where: location,
-          results_per_page: limit,
-        },
-        timeout: 7000,
-      }
-    );
+    const { error, value } = jobsQuerySchema.validate(req.query);
+    if (error) {
+      logger.warn(`Validation error: ${error.details[0].message}`);
+      return res.status(400).json({ error: error.details[0].message });
+    }
 
-    const jobs = response.data.results.map(job => ({
+    const { search, location, page, limit, sortBy } = value;
+    const cacheKey = `${search}-${location}-${page}-${limit}`;
+    
+    let data = cache.get(cacheKey);
+    if (!data) {
+      data = await fetchJobsFromAdzuna(search, location, page, limit);
+      cache.set(cacheKey, data);
+    }
+
+    let jobs = (data.results || []).map(job => ({
       id: job.id,
       title: job.title,
-      company: job.company?.display_name || 'Unknown',
-      location: job.location?.display_name || 'Not specified',
-      description: job.description,
+      company: job.company?.display_name || job.company || 'Unknown',
+      location: job.location?.display_name || 'Remote',
+      description: job.description || '',
       url: job.redirect_url,
-      salary: job.salary_min && job.salary_max
-        ? `$${Math.round(job.salary_min)} - $${Math.round(job.salary_max)}`
-        : null,
-      posted_date: Math.floor(new Date(job.created).getTime() / 1000),
-      tags: [job.contract_time || 'N/A', job.category?.label || 'General']
+      salary: job.salary_is_predicted ? null : (job.salary_min && job.salary_max ? `$${Math.round(job.salary_min/1000)}K - $${Math.round(job.salary_max/1000)}K` : null),
+      salaryMin: job.salary_min,
+      salaryMax: job.salary_max,
+      posted_date: job.created ? Math.floor(new Date(job.created).getTime() / 1000) : Date.now(),
+      tags: job.category ? [job.category.label] : [],
+      jobType: job.contract_time || 'full-time',
+      workSetting: 'on-site'
     }));
 
-    const responseData = {
-      jobs,
-      total: response.data.count,
-      page: parseInt(page),
-      totalPages: Math.ceil(response.data.count / parseInt(limit))
-    };
+    // Apply sorting
+    if (sortBy === 'recent') {
+      jobs.sort((a, b) => b.posted_date - a.posted_date);
+    } else if (sortBy === 'salary_high') {
+      jobs.sort((a, b) => (b.salaryMax || 0) - (a.salaryMax || 0));
+    } else if (sortBy === 'salary_low') {
+      jobs.sort((a, b) => (a.salaryMin || Infinity) - (b.salaryMin || Infinity));
+    }
 
-    cache.set(cacheKey, responseData);
-    logger.info('Jobs fetched successfully', { count: jobs.length });
-    res.json(responseData);
-  } catch (error) {
-    logger.error('Adzuna API error', { error: error.message });
-    res.status(error.response?.status || 500).json({
-      error: 'Job Search Error',
-      message: process.env.NODE_ENV === 'production' ? 'Failed to fetch jobs' : error.message
+    res.json({
+      jobs,
+      total: data.count || jobs.length,
+      page: page,
+      totalPages: Math.ceil((data.count || jobs.length) / limit)
     });
+  } catch (err) {
+    logger.error(`Error fetching jobs: ${err.message}`);
+    res.status(500).json({ error: 'Failed to fetch jobs' });
   }
 });
 
-app.post('/api/auth/register', (req, res) => {
-  res.status(501).json({ error: 'Authentication not available', message: 'Deployed version does not include auth features' });
-});
-app.post('/api/auth/login', (req, res) => {
-  res.status(501).json({ error: 'Authentication not available', message: 'Deployed version does not include auth features' });
-});
-app.get('/api/auth/profile', (req, res) => {
-  res.status(501).json({ error: 'Authentication not available', message: 'Deployed version does not include auth features' });
-});
-app.post('/api/bookmarks', (req, res) => {
-  res.status(501).json({ error: 'Bookmarks not available', message: 'Deployed version does not include bookmark features' });
-});
-app.get('/api/bookmarks', (req, res) => {
-  res.status(501).json({ error: 'Bookmarks not available', message: 'Deployed version does not include bookmark features' });
-});
-app.delete('/api/bookmarks/:jobId', (req, res) => {
-  res.status(501).json({ error: 'Bookmarks not available', message: 'Deployed version does not include bookmark features' });
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString(), cache: cache.getStats() });
 });
 
-app.use((err, req, res, next) => {
-  logger.error('Unhandled error', { error: err.message, stack: err.stack });
-  res.status(500).json({
-    error: 'Something went wrong!',
-    message: process.env.NODE_ENV === 'development' ? err.message : 'Internal Server Error'
-  });
+app.listen(PORT, () => {
+  logger.info(`Server running on port ${PORT}`);
 });
-
-app.use((req, res) => {
-  logger.warn(`404 - Route not found: ${req.method} ${req.path}`);
-  res.status(404).json({ error: 'Route not found' });
-});
-
-const server = app.listen(PORT, '0.0.0.0', () => {
-  logger.info(`NextJob backend running on port ${PORT}`);
-});
-
-process.on('SIGTERM', () => {
-  logger.info('SIGTERM received. Shutting down gracefully...');
-  server.close(() => { logger.info('Process terminated'); process.exit(0); });
-});
-process.on('SIGINT', () => {
-  logger.info('SIGINT received. Shutting down gracefully...');
-  server.close(() => { logger.info('Process terminated'); process.exit(0); });
-});
-
-module.exports = { app, cache, logger };
