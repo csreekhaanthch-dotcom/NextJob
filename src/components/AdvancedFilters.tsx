@@ -1,6 +1,6 @@
 import React from 'react';
-import { Calendar, DollarSign, Briefcase, BarChart3, MapPin, Building2, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
-import { JOB_TYPES, EXPERIENCE_LEVELS, DATE_POSTED_OPTIONS, SALARY_RANGES, WORK_SETTINGS, INDUSTRIES } from '../data/skillsTaxonomy';
+import { Calendar, DollarSign, Briefcase, BarChart3, MapPin, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
+import { JOB_TYPES, EXPERIENCE_LEVELS, DATE_POSTED_OPTIONS, SALARY_RANGES, WORK_SETTINGS } from '../data/skillsTaxonomy';
 
 export interface AdvancedFiltersState {
   jobTypes: string[];
@@ -19,6 +19,11 @@ interface Props {
   activeFilterCount: number;
 }
 
+interface FilterOption {
+  value: string;
+  label: string;
+}
+
 const FilterSection: React.FC<{ title: string; icon: React.ReactNode; children: React.ReactNode; defaultOpen?: boolean }> = ({ title, icon, children, defaultOpen = true }) => {
   const [isOpen, setIsOpen] = React.useState(defaultOpen);
   return (
@@ -32,9 +37,9 @@ const FilterSection: React.FC<{ title: string; icon: React.ReactNode; children: 
   );
 };
 
-const CheckboxGroup: React.FC<{ options: readonly { value: string; label: string }[]; selected: string[]; onChange: (v: string[]) => void }> = ({ options, selected, onChange }) => (
+const CheckboxGroup: React.FC<{ options: readonly FilterOption[]; selected: string[]; onChange: (v: string[]) => void }> = ({ options, selected, onChange }) => (
   <div className="space-y-2">
-    {options.map(o => (
+    {options.map((o: FilterOption) => (
       <label key={o.value} className="flex items-center gap-2 cursor-pointer">
         <input type="checkbox" checked={selected.includes(o.value)} onChange={e => onChange(e.target.checked ? [...selected, o.value] : selected.filter(v => v !== o.value))} className="w-4 h-4 rounded border-gray-300 text-blue-600" />
         <span className="text-sm text-gray-700 dark:text-gray-300">{o.label}</span>
@@ -43,9 +48,9 @@ const CheckboxGroup: React.FC<{ options: readonly { value: string; label: string
   </div>
 );
 
-const RadioGroup: React.FC<{ options: readonly { value: string; label: string }[]; selected: string; onChange: (v: string) => void }> = ({ options, selected, onChange }) => (
+const RadioGroup: React.FC<{ options: readonly FilterOption[]; selected: string; onChange: (v: string) => void }> = ({ options, selected, onChange }) => (
   <div className="space-y-2">
-    {options.map(o => (
+    {options.map((o: FilterOption) => (
       <label key={o.value} className="flex items-center gap-2 cursor-pointer">
         <input type="radio" name="filter" checked={selected === o.value} onChange={() => onChange(o.value)} className="w-4 h-4 border-gray-300 text-blue-600" />
         <span className="text-sm text-gray-700 dark:text-gray-300">{o.label}</span>
@@ -65,11 +70,11 @@ const AdvancedFilters: React.FC<Props> = ({ filters, onFiltersChange, onReset, a
         </div>
         {activeFilterCount > 0 && <button type="button" onClick={onReset} className="text-sm text-gray-600 hover:text-red-500 flex items-center gap-1"><RefreshCw className="h-3.5 w-3.5" />Reset</button>}
       </div>
-      <FilterSection title="Date Posted" icon={<Calendar className="h-4 w-4" />}><RadioGroup options={DATE_POSTED_OPTIONS} selected={filters.datePosted} onChange={v => update('datePosted', v)} /></FilterSection>
-      <FilterSection title="Job Type" icon={<Briefcase className="h-4 w-4" />}><CheckboxGroup options={JOB_TYPES} selected={filters.jobTypes} onChange={v => update('jobTypes', v)} /></FilterSection>
-      <FilterSection title="Experience" icon={<BarChart3 className="h-4 w-4" />}><CheckboxGroup options={EXPERIENCE_LEVELS} selected={filters.experienceLevels} onChange={v => update('experienceLevels', v)} /></FilterSection>
-      <FilterSection title="Salary" icon={<DollarSign className="h-4 w-4" />} defaultOpen={false}><RadioGroup options={SALARY_RANGES} selected={filters.salaryRange} onChange={v => update('salaryRange', v)} /></FilterSection>
-      <FilterSection title="Work Setting" icon={<MapPin className="h-4 w-4" />}><CheckboxGroup options={WORK_SETTINGS} selected={filters.workSettings} onChange={v => update('workSettings', v)} /></FilterSection>
+      <FilterSection title="Date Posted" icon={<Calendar className="h-4 w-4" />}><RadioGroup options={DATE_POSTED_OPTIONS} selected={filters.datePosted} onChange={(v: string) => update('datePosted', v)} /></FilterSection>
+      <FilterSection title="Job Type" icon={<Briefcase className="h-4 w-4" />}><CheckboxGroup options={JOB_TYPES} selected={filters.jobTypes} onChange={(v: string[]) => update('jobTypes', v)} /></FilterSection>
+      <FilterSection title="Experience" icon={<BarChart3 className="h-4 w-4" />}><CheckboxGroup options={EXPERIENCE_LEVELS} selected={filters.experienceLevels} onChange={(v: string[]) => update('experienceLevels', v)} /></FilterSection>
+      <FilterSection title="Salary" icon={<DollarSign className="h-4 w-4" />} defaultOpen={false}><RadioGroup options={SALARY_RANGES} selected={filters.salaryRange} onChange={(v: string) => update('salaryRange', v)} /></FilterSection>
+      <FilterSection title="Work Setting" icon={<MapPin className="h-4 w-4" />}><CheckboxGroup options={WORK_SETTINGS} selected={filters.workSettings} onChange={(v: string[]) => update('workSettings', v)} /></FilterSection>
     </div>
   );
 };

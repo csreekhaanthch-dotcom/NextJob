@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Search, X, Plus, Code } from 'lucide-react';
+import { Search, X, Plus } from 'lucide-react';
 import { searchSkills, popularSkills, skillsTaxonomy } from '../data/skillsTaxonomy';
 
 interface Props {
@@ -9,10 +9,15 @@ interface Props {
   maxSkills?: number;
 }
 
+interface SkillItem {
+  skill: string;
+  category: string;
+}
+
 const SkillsAutocomplete: React.FC<Props> = ({ selectedSkills, onSkillsChange, placeholder = "Search skills...", maxSkills = 10 }) => {
   const [query, setQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
-  const [suggestions, setSuggestions] = useState<{ skill: string; category: string }[]>([]);
+  const [suggestions, setSuggestions] = useState<SkillItem[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -26,10 +31,10 @@ const SkillsAutocomplete: React.FC<Props> = ({ selectedSkills, onSkillsChange, p
 
   useEffect(() => {
     if (query.trim()) {
-      setSuggestions(searchSkills(query, 8).filter(r => !selectedSkills.includes(r.skill)));
+      setSuggestions(searchSkills(query, 8).filter((r: SkillItem) => !selectedSkills.includes(r.skill)));
     } else {
-      setSuggestions(popularSkills.filter(s => !selectedSkills.includes(s)).slice(0, 8).map(s => {
-        const found = skillsTaxonomy.find(c => c.skills.includes(s));
+      setSuggestions(popularSkills.filter((s: string) => !selectedSkills.includes(s)).slice(0, 8).map((s: string) => {
+        const found = skillsTaxonomy.find((c) => c.skills.includes(s));
         return { skill: s, category: found?.name || 'Other' };
       }));
     }
@@ -58,7 +63,7 @@ const SkillsAutocomplete: React.FC<Props> = ({ selectedSkills, onSkillsChange, p
       {isOpen && suggestions.length > 0 && (
         <div className="absolute z-20 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-y-auto">
           {!query && <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase bg-gray-50 dark:bg-gray-900">Popular Skills</div>}
-          {suggestions.map(s => (
+          {suggestions.map((s: SkillItem) => (
             <button key={s.skill} type="button" onClick={() => handleSelect(s.skill)} className="w-full px-3 py-2 text-left hover:bg-blue-50 dark:hover:bg-blue-900/30 flex items-center justify-between">
               <span className="text-gray-700 dark:text-gray-300">{s.skill}</span>
               <Plus className="h-4 w-4 text-gray-400" />
