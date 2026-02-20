@@ -31,38 +31,22 @@ const logger = winston.createLogger({
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Input Validation Schema - Updated to support new filters
+// Updated validation schema to support sortBy
 const jobsQuerySchema = Joi.object({
   search: Joi.string().max(200).trim().allow('').default(''),
   location: Joi.string().max(200).trim().allow('').default(''),
   page: Joi.number().integer().min(1).max(1000).default(1),
   limit: Joi.number().integer().min(1).max(50).default(12),
   sortBy: Joi.string().valid('recent', 'relevant', 'salary_high', 'salary_low').default('recent'),
-  skills: Joi.alternatives().try(
-    Joi.string(),
-    Joi.array().items(Joi.string())
-  ),
-  jobType: Joi.alternatives().try(
-    Joi.string(),
-    Joi.array().items(Joi.string())
-  ),
-  experienceLevel: Joi.alternatives().try(
-    Joi.string(),
-    Joi.array().items(Joi.string())
-  ),
-  datePosted: Joi.string().valid('24h', '3d', '7d', '14d', '30d', 'all').optional(),
-  salaryRange: Joi.string().optional(),
-  workSetting: Joi.alternatives().try(
-    Joi.string(),
-    Joi.array().items(Joi.string())
-  ),
-  industry: Joi.alternatives().try(
-    Joi.string(),
-    Joi.array().items(Joi.string())
-  )
-});
+  skills: Joi.alternatives().try(Joi.string(), Joi.array().items(Joi.string())),
+  jobType: Joi.alternatives().try(Joi.string(), Joi.array().items(Joi.string())),
+  experienceLevel: Joi.alternatives().try(Joi.string(), Joi.array().items(Joi.string())),
+  datePosted: Joi.string().valid('24h', '3d', '7d', '14d', '30d', 'all'),
+  salaryRange: Joi.string(),
+  workSetting: Joi.alternatives().try(Joi.string(), Joi.array().items(Joi.string())),
+  industry: Joi.alternatives().try(Joi.string(), Joi.array().items(Joi.string()))
+}).unknown(true);
 
-// Cache
 const CACHE_TTL = 5 * 60 * 1000;
 const MAX_CACHE_SIZE = 100;
 
@@ -96,34 +80,23 @@ class BoundedCache {
     this.cache.set(key, { data, timestamp: Date.now() });
   }
   getStats() {
-    return {
-      size: this.cache.size,
-      maxSize: this.maxSize,
-      ttl: this.ttl,
-      ...this.stats
-    };
+    return { size: this.cache.size, ...this.stats };
   }
 }
 
 const cache = new BoundedCache(MAX_CACHE_SIZE, CACHE_TTL);
 
-// Middleware
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
 
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100
-});
+const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
 app.use('/api/', limiter);
 
-// Adzuna API configuration
 const ADZUNA_APP_ID = process.env.ADZUNA_APP_ID;
 const ADZUNA_APP_KEY = process.env.ADZUNA_APP_KEY;
 const ADZUNA_BASE_URL = 'https://api.adzuna.com/v1/api/jobs/us/search';
 
-// Fetch jobs from Adzuna
 async function fetchJobsFromAdzuna(search, location, page, limit) {
   const params = new URLSearchParams({
     app_id: ADZUNA_APP_ID,
@@ -134,15 +107,12 @@ async function fetchJobsFromAdzuna(search, location, page, limit) {
     page: page,
     'content-type': 'application/json'
   });
-
   const url = `${ADZUNA_BASE_URL}?${params}`;
   logger.info(`Fetching from Adzuna: ${url}`);
-  
   const response = await axios.get(url);
   return response.data;
 }
 
-// Routes
 app.get('/api/jobs', async (req, res) => {
   try {
     const { error, value } = jobsQuerySchema.validate(req.query);
@@ -150,7 +120,6 @@ app.get('/api/jobs', async (req, res) => {
       logger.warn(`Validation error: ${error.details[0].message}`);
       return res.status(400).json({ error: error.details[0].message });
     }
-
     const { search, location, page, limit, sortBy } = value;
     const cacheKey = `${search}-${location}-${page}-${limit}`;
     
@@ -167,7 +136,7 @@ app.get('/api/jobs', async (req, res) => {
       location: job.location?.display_name || 'Remote',
       description: job.description || '',
       url: job.redirect_url,
-      salary: job.salary_is_predicted ? null : (job.salary_min && job.salary_max ? `$${Math.round(job.salary_min/1000)}K - $${Math.round(job.salary_max/1000)}K` : null),
+      salary: job.salary_min && job.salary_max ? `$${Math.round(job.salary_min/1000)}K - $${Math.round(job.salary_max/1000)}K` : null,
       salaryMin: job.salary_min,
       salaryMax: job.salary_max,
       posted_date: job.created ? Math.floor(new Date(job.created).getTime() / 1000) : Date.now(),
@@ -176,23 +145,13 @@ app.get('/api/jobs', async (req, res) => {
       workSetting: 'on-site'
     }));
 
-    // Apply sorting
-    if (sortBy === 'recent') {
-      jobs.sort((a, b) => b.posted_date - a.posted_date);
-    } else if (sortBy === 'salary_high') {
-      jobs.sort((a, b) => (b.salaryMax || 0) - (a.salaryMax || 0));
-    } else if (sortBy === 'salary_low') {
-      jobs.sort((a, b) => (a.salaryMin || Infinity) - (b.salaryMin || Infinity));
-    }
+    if (sortBy === 'recent') jobs.sort((a, b) => b.posted_date - a.posted_date);
+    else if (sortBy === 'salary_high') jobs.sort((a, b) => (b.salaryMax || 0) - (a.salaryMax || 0));
+    else if (sortBy === 'salary_low') jobs.sort((a, b) => (a.salaryMin || Infinity) - (b.salaryMin || Infinity));
 
-    res.json({
-      jobs,
-      total: data.count || jobs.length,
-      page: page,
-      totalPages: Math.ceil((data.count || jobs.length) / limit)
-    });
+    res.json({ jobs, total: data.count || jobs.length, page, totalPages: Math.ceil((data.count || jobs.length) / limit) });
   } catch (err) {
-    logger.error(`Error fetching jobs: ${err.message}`);
+    logger.error(`Error: ${err.message}`);
     res.status(500).json({ error: 'Failed to fetch jobs' });
   }
 });
@@ -201,6 +160,4 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString(), cache: cache.getStats() });
 });
 
-app.listen(PORT, () => {
-  logger.info(`Server running on port ${PORT}`);
-});
+app.listen(PORT, () => logger.info(`Server running on port ${PORT}`));
