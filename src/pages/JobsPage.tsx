@@ -19,7 +19,7 @@ const SORT_OPTIONS: { value: SortOption; label: string }[] = [
 ];
 
 const defaultFilters: AdvancedFiltersState = {
-  jobTypes: [], experienceLevels: [], datePosted: 'all', salaryRange: '', workSettings: [], industries: [], distance: 25
+  jobTypes: [], experienceLevels: [], datePosted: '', salaryRange: '', workSettings: [], industries: []
 };
 
 const JobsPage: React.FC = () => {
@@ -97,7 +97,7 @@ const JobsPage: React.FC = () => {
       if (debouncedSearchTerm && page === 1) addToHistory(debouncedSearchTerm);
       let filteredJobs = response.jobs;
       if (selectedSkills.length > 0 || filters.jobTypes.length > 0 || filters.experienceLevels.length > 0 || filters.workSettings.length > 0 || filters.datePosted !== 'all') {
-        filteredJobs = api.filterJobsClientSide(response.jobs, params);
+        filteredJobs = api.filterJobsClientSide(response.jobs, filters);
       }
       setJobs(filteredJobs); setTotalPages(response.totalPages); setTotalJobs(response.total); setInitialLoad(false);
     } catch (err) {
@@ -156,7 +156,7 @@ const JobsPage: React.FC = () => {
                   <h3 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2"><Sparkles className="h-4 w-4 text-blue-500" />Skills & Technologies</h3>
                   <SkillsAutocomplete selectedSkills={selectedSkills} onSkillsChange={setSelectedSkills} maxSkills={10} />
                 </div>
-                <AdvancedFilters filters={filters} onFilterChange={setFilters} onReset={() => setFilters(defaultFilters)} activeFilterCount={activeFilterCount - selectedSkills.length} />
+                <AdvancedFilters filters={filters} onFilterChange={setFilters} onClearAll={() => setFilters(defaultFilters)} activeFilterCount={activeFilterCount - selectedSkills.length} />
               </div>
             )}
           </aside>
@@ -256,7 +256,7 @@ const JobsPage: React.FC = () => {
                   <h3 className="font-medium text-gray-900 dark:text-white mb-3">Skills</h3>
                   <SkillsAutocomplete selectedSkills={selectedSkills} onSkillsChange={setSelectedSkills} maxSkills={10} />
                 </div>
-                <AdvancedFilters filters={filters} onFilterChange={setFilters} onReset={() => setFilters(defaultFilters)} activeFilterCount={activeFilterCount - selectedSkills.length} />
+                <AdvancedFilters filters={filters} onFilterChange={setFilters} onClearAll={() => setFilters(defaultFilters)} activeFilterCount={activeFilterCount - selectedSkills.length} />
               </div>
               <div className="sticky bottom-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4">
                 <button type="button" onClick={() => { setShowMobileFilters(false); fetchJobs(); }} className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">Apply Filters</button>
