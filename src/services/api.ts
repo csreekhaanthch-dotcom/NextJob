@@ -45,6 +45,15 @@ export interface SearchJobsResponse {
   totalPages: number;
 }
 
+export interface AdvancedFiltersState {
+  jobTypes: string[];
+  experienceLevels: string[];
+  datePosted: string;
+  salaryRange: string;
+  workSettings: string[];
+  industries: string[];
+}
+
 class ApiService {
   private baseUrl: string;
   constructor(baseUrl: string) { this.baseUrl = baseUrl; }
@@ -77,14 +86,6 @@ class ApiService {
     if (params.page) urlParams.append('page', String(params.page));
     if (params.limit) urlParams.append('limit', String(params.limit));
     if (params.sortBy) urlParams.append('sortBy', params.sortBy);
-    if (params.skills) params.skills.forEach(s => urlParams.append('skills', s));
-    if (params.jobTypes) params.jobTypes.forEach(t => urlParams.append('jobType', t));
-    if (params.experienceLevels) params.experienceLevels.forEach(l => urlParams.append('experienceLevel', l));
-    if (params.datePosted && params.datePosted !== 'all') urlParams.append('datePosted', params.datePosted);
-    if (params.salaryRange) urlParams.append('salaryRange', params.salaryRange);
-    if (params.workSettings) params.workSettings.forEach(s => urlParams.append('workSetting', s));
-    if (params.industries) params.industries.forEach(i => urlParams.append('industry', i));
-    if (params.distance) urlParams.append('distance', String(params.distance));
 
     const url = `${this.baseUrl}/api/jobs?${urlParams}`;
     const response = await this.fetchWithTimeout(url);
@@ -98,13 +99,48 @@ class ApiService {
     };
   }
 
-  async getJobById(id: string): Promise<Job | null> {
-    try {
-      const response = await this.fetchWithTimeout(`${this.baseUrl}/api/jobs/${id}`);
-      return await this.handleResponse(response);
-    } catch {
-      return null;
+  async checkHealth(): Promise<{ status: string; timestamp: string }> {
+    const response = await this.fetchWithTimeout(`${this.baseUrl}/health`);
+    return await this.handleResponse(response);
+  }
+
+  filterJobsClientSide(jobs: Job[], filters: AdvancedFiltersState): Job[] {
+    let filtered = [...jobs];
+
+    if (filters.jobTypes.length > 0) {
+      filtered = filtered.filter(job => 
+        filters.jobTypes.some(type => 
+          job.jobType?.toLowerCase().includes(type.toLowerCase())
+        )
+      );
     }
+
+    if (filters.workSettings.length > 0) {
+      filtered = filtered.filter(job => 
+        filters.workSettings.some(setting =>
+          job.workSetting === setting || 
+          (setting === 'remote' && job.is_remote)
+        )
+      );
+    }
+
+    if (filters.datePosted) {
+      const now = Date.now() / 1000;
+      const daysMap: Record<string, number> = {
+        '24h': 1,
+        '3d': 3,
+        '7d': 7,
+        '14d': 14,
+        '30d': 30,
+      };
+      const days = daysMap[filters.datePosted] || 0;
+      if (days > 0) {
+        const cutoff = now - (days * 24 * 60 * 60);
+        filtered = filtered.filter(job => job.posted_date >= cutoff);
+      }
+    }
+
+    return filtered;
   }
 
   async getSearchHistory(): Promise<string[]> {

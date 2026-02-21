@@ -1,7 +1,7 @@
 import { X, ChevronDown, ChevronUp, Briefcase, MapPin, Clock, DollarSign, Building, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 
-interface Filters {
+export interface AdvancedAdvancedFiltersStateState {
   jobTypes: string[];
   experienceLevels: string[];
   datePosted: string;
@@ -10,9 +10,9 @@ interface Filters {
   industries: string[];
 }
 
-interface AdvancedFiltersProps {
-  filters: Filters;
-  onFilterChange: (filters: Filters) => void;
+interface AdvancedAdvancedFiltersStateProps {
+  filters: AdvancedAdvancedFiltersStateState;
+  onFilterChange: (filters: AdvancedAdvancedFiltersStateState) => void;
   onClearAll: () => void;
 }
 
@@ -55,7 +55,7 @@ const WORK_SETTINGS = [
   { value: 'on-site', label: 'On-site', icon: '🏬' },
 ];
 
-export default function AdvancedFilters({ filters, onFilterChange, onClearAll }: AdvancedFiltersProps) {
+export default function AdvancedAdvancedFiltersState({ filters, onFilterChange, onClearAll }: AdvancedAdvancedFiltersStateProps) {
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     jobTypes: true,
     experienceLevels: false,
@@ -68,7 +68,7 @@ export default function AdvancedFilters({ filters, onFilterChange, onClearAll }:
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
   };
 
-  const handleCheckboxChange = (category: keyof Filters, value: string) => {
+  const handleCheckboxChange = (category: keyof AdvancedFiltersState, value: string) => {
     const currentValues = filters[category] as string[];
     const newValues = currentValues.includes(value)
       ? currentValues.filter(v => v !== value)
@@ -76,7 +76,7 @@ export default function AdvancedFilters({ filters, onFilterChange, onClearAll }:
     onFilterChange({ ...filters, [category]: newValues });
   };
 
-  const handleRadioChange = (category: keyof Filters, value: string) => {
+  const handleRadioChange = (category: keyof AdvancedFiltersState, value: string) => {
     onFilterChange({ ...filters, [category]: value });
   };
 
@@ -128,7 +128,7 @@ export default function AdvancedFilters({ filters, onFilterChange, onClearAll }:
       <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <h3 className="font-semibold text-gray-900 dark:text-white">Filters</h3>
+            <h3 className="font-semibold text-gray-900 dark:text-white">AdvancedFiltersState</h3>
             {activeFilterCount > 0 && (
               <span className="px-2 py-0.5 text-xs bg-indigo-600 text-white rounded-full">
                 {activeFilterCount}
