@@ -17,6 +17,9 @@ export interface Job {
   experienceLevel?: string;
   workSetting?: 'remote' | 'hybrid' | 'on-site';
   industry?: string;
+  source?: string;
+  is_remote?: boolean;
+  posted_at?: string;
 }
 
 export interface SearchJobsParams {
@@ -79,64 +82,51 @@ class ApiService {
     if (params.experienceLevels) params.experienceLevels.forEach(l => urlParams.append('experienceLevel', l));
     if (params.datePosted && params.datePosted !== 'all') urlParams.append('datePosted', params.datePosted);
     if (params.salaryRange) urlParams.append('salaryRange', params.salaryRange);
-    if (params.workSettings) params.workSettings.forEach(w => urlParams.append('workSetting', w));
+    if (params.workSettings) params.workSettings.forEach(s => urlParams.append('workSetting', s));
     if (params.industries) params.industries.forEach(i => urlParams.append('industry', i));
+    if (params.distance) urlParams.append('distance', String(params.distance));
 
     const url = `${this.baseUrl}/api/jobs?${urlParams}`;
+    const response = await this.fetchWithTimeout(url);
+    const data = await this.handleResponse(response);
+    
+    return {
+      jobs: data.jobs || [],
+      total: data.total || 0,
+      page: data.page || 1,
+      totalPages: data.totalPages || 1,
+    };
+  }
+
+  async getJobById(id: string): Promise<Job | null> {
     try {
-      const response = await this.fetchWithTimeout(url, { headers: { 'Content-Type': 'application/json' } });
-      return this.handleResponse(response);
-    } catch (error) {
-      if (error instanceof TypeError && error.message === 'Failed to fetch') {
-        throw new Error('Unable to connect to backend server');
-      }
-      throw error;
+      const response = await this.fetchWithTimeout(`${this.baseUrl}/api/jobs/${id}`);
+      return await this.handleResponse(response);
+    } catch {
+      return null;
     }
   }
 
-  async getJob(id: string): Promise<Job> {
-    const response = await this.searchJobs({});
-    const job = response.jobs.find(j => j.id === id);
-    if (!job) throw new Error('Job not found');
-    return job;
+  async getSearchHistory(): Promise<string[]> {
+    try {
+      const stored = localStorage.getItem('searchHistory');
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
   }
 
-  async checkHealth(): Promise<any> {
-    const response = await this.fetchWithTimeout(`${this.baseUrl}/health`, { headers: { 'Content-Type': 'application/json' } }, 5000);
-    return this.handleResponse(response);
-  }
-
-  filterJobsClientSide(jobs: Job[], params: SearchJobsParams): Job[] {
-    let filtered = [...jobs];
-    if (params.skills && params.skills.length > 0) {
-      filtered = filtered.filter(job => {
-        const jobSkills = job.skills || job.tags || [];
-        return params.skills!.some(s => jobSkills.some(js => js.toLowerCase().includes(s.toLowerCase())));
-      });
+  async saveSearchHistory(query: string): Promise<void> {
+    try {
+      const history = await this.getSearchHistory();
+      const filtered = history.filter(h => h !== query);
+      const updated = [query, ...filtered].slice(0, 10);
+      localStorage.setItem('searchHistory', JSON.stringify(updated));
+    } catch {
+      // Ignore errors
     }
-    if (params.jobTypes && params.jobTypes.length > 0) {
-      filtered = filtered.filter(job => job.jobType && params.jobTypes!.includes(job.jobType));
-    }
-    if (params.experienceLevels && params.experienceLevels.length > 0) {
-      filtered = filtered.filter(job => job.experienceLevel && params.experienceLevels!.includes(job.experienceLevel));
-    }
-    if (params.workSettings && params.workSettings.length > 0) {
-      filtered = filtered.filter(job => job.workSetting && params.workSettings!.includes(job.workSetting));
-    }
-    if (params.datePosted && params.datePosted !== 'all') {
-      const now = Date.now();
-      const dayMs = 86400000;
-      const days: Record<string, number> = { '24h': 1, '3d': 3, '7d': 7, '14d': 14, '30d': 30 };
-      const minDate = now - (days[params.datePosted] || 0) * dayMs;
-      filtered = filtered.filter(job => job.posted_date >= minDate / 1000);
-    }
-    if (params.sortBy) {
-      if (params.sortBy === 'recent') filtered.sort((a, b) => b.posted_date - a.posted_date);
-      else if (params.sortBy === 'salary_high') filtered.sort((a, b) => (b.salaryMax || 0) - (a.salaryMax || 0));
-      else if (params.sortBy === 'salary_low') filtered.sort((a, b) => (a.salaryMin || Infinity) - (b.salaryMin || Infinity));
-    }
-    return filtered;
   }
 }
 
 export const api = new ApiService(API_BASE_URL);
+export default api;

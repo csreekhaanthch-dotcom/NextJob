@@ -92,7 +92,7 @@ export default function JobCard({ job, viewMode = 'grid', onBookmark, isBookmark
                 <div className="flex items-center gap-2 mt-1">
                   <span className="text-gray-600 dark:text-gray-400 font-medium">{job.company}</span>
                   <span className="text-gray-300 dark:text-gray-600">•</span>
-                  <SourceBadge source={job.source} />
+                  <SourceBadge source={job.source || "Unknown"} />
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -113,8 +113,8 @@ export default function JobCard({ job, viewMode = 'grid', onBookmark, isBookmark
                 <Clock className="w-4 h-4" />
                 {formatTimeAgo(job.posted_date)}
               </span>
-              {job.job_type && (
-                <JobTypeBadge type={job.job_type} />
+              {job.jobType && (
+                <JobTypeBadge type={job.jobType} />
               )}
             </div>
           </div>
@@ -189,9 +189,9 @@ export default function JobCard({ job, viewMode = 'grid', onBookmark, isBookmark
 
         {/* Tags */}
         <div className="mt-4 flex flex-wrap gap-2">
-          <SourceBadge source={job.source} />
-          {job.job_type && <JobTypeBadge type={job.job_type} />}
-          {job.is_remote && (
+          <SourceBadge source={job.source || "Unknown"} />
+          {job.jobType && <JobTypeBadge type={job.jobType} />}
+          {job.workSetting === "remote" && (
             <span className="text-xs px-2 py-0.5 rounded bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400 flex items-center gap-1">
               <Globe className="w-3 h-3" /> Remote
             </span>
