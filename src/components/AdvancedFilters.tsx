@@ -1,7 +1,7 @@
-import { X, ChevronDown, ChevronUp, Briefcase, MapPin, Clock, DollarSign, Building, RefreshCw } from 'lucide-react';
+import { ChevronDown, ChevronUp, Briefcase, MapPin, Clock, DollarSign, Building, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 
-export interface AdvancedAdvancedFiltersStateState {
+export interface AdvancedFiltersState {
   jobTypes: string[];
   experienceLevels: string[];
   datePosted: string;
@@ -10,9 +10,9 @@ export interface AdvancedAdvancedFiltersStateState {
   industries: string[];
 }
 
-interface AdvancedAdvancedFiltersStateProps {
-  filters: AdvancedAdvancedFiltersStateState;
-  onFilterChange: (filters: AdvancedAdvancedFiltersStateState) => void;
+interface AdvancedFiltersProps {
+  filters: AdvancedFiltersState;
+  onFilterChange: (filters: AdvancedFiltersState) => void;
   onClearAll: () => void;
 }
 
@@ -22,14 +22,6 @@ const JOB_TYPES = [
   { value: 'contract', label: 'Contract', icon: '📋' },
   { value: 'freelance', label: 'Freelance', icon: '🚀' },
   { value: 'internship', label: 'Internship', icon: '🎓' },
-];
-
-const EXPERIENCE_LEVELS = [
-  { value: 'entry', label: 'Entry Level', count: '0-2 years' },
-  { value: 'mid', label: 'Mid Level', count: '2-5 years' },
-  { value: 'senior', label: 'Senior', count: '5-8 years' },
-  { value: 'lead', label: 'Lead/Manager', count: '8+ years' },
-  { value: 'executive', label: 'Executive', count: '10+ years' },
 ];
 
 const DATE_POSTED = [
@@ -55,10 +47,9 @@ const WORK_SETTINGS = [
   { value: 'on-site', label: 'On-site', icon: '🏬' },
 ];
 
-export default function AdvancedAdvancedFiltersState({ filters, onFilterChange, onClearAll }: AdvancedAdvancedFiltersStateProps) {
+export default function AdvancedFilters({ filters, onFilterChange, onClearAll }: AdvancedFiltersProps) {
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     jobTypes: true,
-    experienceLevels: false,
     datePosted: true,
     salaryRange: false,
     workSettings: true,
@@ -79,6 +70,14 @@ export default function AdvancedAdvancedFiltersState({ filters, onFilterChange, 
   const handleRadioChange = (category: keyof AdvancedFiltersState, value: string) => {
     onFilterChange({ ...filters, [category]: value });
   };
+
+  const activeFilterCount = 
+    filters.jobTypes.length + 
+    filters.experienceLevels.length + 
+    (filters.datePosted ? 1 : 0) +
+    (filters.salaryRange ? 1 : 0) +
+    filters.workSettings.length +
+    filters.industries.length;
 
   const FilterSection = ({ 
     title, 
@@ -107,28 +106,19 @@ export default function AdvancedAdvancedFiltersState({ filters, onFilterChange, 
         )}
       </button>
       {expandedSections[section] && (
-        <div className="px-4 pb-4 animate-in slide-in-from-top-2 duration-200">
+        <div className="px-4 pb-4">
           {children}
         </div>
       )}
     </div>
   );
 
-  const activeFilterCount = 
-    filters.jobTypes.length + 
-    filters.experienceLevels.length + 
-    (filters.datePosted ? 1 : 0) +
-    (filters.salaryRange ? 1 : 0) +
-    filters.workSettings.length +
-    filters.industries.length;
-
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
-      {/* Header */}
       <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <h3 className="font-semibold text-gray-900 dark:text-white">AdvancedFiltersState</h3>
+            <h3 className="font-semibold text-gray-900 dark:text-white">Filters</h3>
             {activeFilterCount > 0 && (
               <span className="px-2 py-0.5 text-xs bg-indigo-600 text-white rounded-full">
                 {activeFilterCount}
@@ -138,7 +128,7 @@ export default function AdvancedAdvancedFiltersState({ filters, onFilterChange, 
           {activeFilterCount > 0 && (
             <button
               onClick={onClearAll}
-              className="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 flex items-center gap-1"
+              className="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 flex items-center gap-1"
             >
               <RefreshCw className="w-3 h-3" />
               Clear all
@@ -147,7 +137,6 @@ export default function AdvancedAdvancedFiltersState({ filters, onFilterChange, 
         </div>
       </div>
 
-      {/* Filter Sections */}
       <div className="divide-y divide-gray-200 dark:divide-gray-700">
         <FilterSection title="Job Type" section="jobTypes" icon={Briefcase}>
           <div className="space-y-2">
@@ -159,30 +148,9 @@ export default function AdvancedAdvancedFiltersState({ filters, onFilterChange, 
                   onChange={() => handleCheckboxChange('jobTypes', type.value)}
                   className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                 />
-                <span className="text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">
+                <span className="text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white">
                   {type.icon} {type.label}
                 </span>
-              </label>
-            ))}
-          </div>
-        </FilterSection>
-
-        <FilterSection title="Experience Level" section="experienceLevels" icon={Building}>
-          <div className="space-y-2">
-            {EXPERIENCE_LEVELS.map(level => (
-              <label key={level.value} className="flex items-center justify-between cursor-pointer group">
-                <div className="flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    checked={filters.experienceLevels.includes(level.value)}
-                    onChange={() => handleCheckboxChange('experienceLevels', level.value)}
-                    className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                  />
-                  <span className="text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white">
-                    {level.label}
-                  </span>
-                </div>
-                <span className="text-xs text-gray-400">{level.count}</span>
               </label>
             ))}
           </div>
