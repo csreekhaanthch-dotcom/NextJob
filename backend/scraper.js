@@ -1,7 +1,6 @@
 /**
  * Job Scraper Module - JavaScript
- * Integrates directly with Express backend
- * Sources: Adzuna, Remotive, Arbeitnow, JSearch
+ * Sources: Adzuna, Remotive, Arbeitnow, JSearch, Greenhouse, Lever
  */
 
 const fetch = require('node-fetch');
@@ -24,6 +23,18 @@ const CONFIG = {
     baseUrl: 'https://jsearch.p.rapidapi.com/search',
   },
 };
+
+// Company lists for career page scraping
+const GREENHOUSE_COMPANIES = [
+  'stripe', 'airbnb', 'dropbox', 'shopify', 'notion', 'figma', 'canva',
+  'webflow', 'zapier', 'robinhood', 'coinbase', 'gusto', 'docker',
+  'grammarly', 'postman', 'vercel', 'linear', 'automattic', 'gitlab'
+];
+
+const LEVER_COMPANIES = [
+  'netflix', 'atlassian', 'segment', 'qualtrics', 'twitch', 'quora',
+  'postman', 'loom', 'scale', 'vercel', 'linear', 'hackerrank'
+];
 
 // Normalizers
 function normalizeAdzunaJob(job) {
@@ -92,6 +103,39 @@ function normalizeJSearchJob(job) {
     posted_at: job.job_posted_at_datetime_utc || '',
     source: 'JSearch',
     is_remote: job.job_is_remote || false,
+  };
+}
+
+function normalizeGreenhouseJob(job, companyName) {
+  return {
+    id: `greenhouse-${job.id}`,
+    title: job.title || '',
+    company: companyName,
+    location: job.location?.name || 'Remote',
+    description: '',
+    url: job.absolute_url || `https://boards.greenhouse.com/jobs/${job.id}`,
+    salary: '',
+    job_type: '',
+    posted_at: job.updated_at || '',
+    source: `Greenhouse - ${companyName}`,
+    is_remote: true,
+  };
+}
+
+function normalizeLeverJob(job, companyName) {
+  const categories = job.categories || {};
+  return {
+    id: `lever-${job.id}`,
+    title: job.text || '',
+    company: companyName,
+    location: categories.location || 'Remote',
+    description: (job.descriptionPlain || '').substring(0, 2000),
+    url: job.hostedUrl || '',
+    salary: '',
+    job_type: categories.commitment || '',
+    posted_at: '',
+    source: `Lever - ${companyName}`,
+    is_remote: true,
   };
 }
 
@@ -204,6 +248,74 @@ async function fetchJSearchJobs(query, location, page = 1) {
   }
 }
 
+// Greenhouse scraper
+async function fetchGreenhouseJobs(query, location) {
+  const allJobs = [];
+  
+  for (const company of GREENHOUSE_COMPANIES.slice(0, 10)) { // Limit to 10 companies
+    try {
+      const url = `https://boards.greenhouse.io/embed/job_board?for=${company}`;
+      const response = await fetch(url);
+      
+      if (!response.ok) continue;
+      
+      const data = await response.json();
+      let jobs = data.jobs || [];
+      
+      // Filter by query
+      if (query) {
+        const queryLower = query.toLowerCase();
+        jobs = jobs.filter(job => job.title?.toLowerCase().includes(queryLower));
+      }
+      
+      jobs.forEach(job => allJobs.push(normalizeGreenhouseJob(job, company)));
+      
+      // Rate limiting
+      await new Promise(resolve => setTimeout(resolve, 100));
+    } catch (error) {
+      // Silently skip failed companies
+    }
+  }
+  
+  console.log(`[Greenhouse] Found ${allJobs.length} jobs`);
+  return allJobs;
+}
+
+// Lever scraper
+async function fetchLeverJobs(query, location) {
+  const allJobs = [];
+  
+  for (const company of LEVER_COMPANIES.slice(0, 10)) { // Limit to 10 companies
+    try {
+      const url = `https://api.lever.co/v0/postings/${company}?mode=json`;
+      const response = await fetch(url);
+      
+      if (!response.ok) continue;
+      
+      let jobs = await response.json();
+      
+      // Filter by query
+      if (query) {
+        const queryLower = query.toLowerCase();
+        jobs = jobs.filter(job => 
+          job.text?.toLowerCase().includes(queryLower) ||
+          job.descriptionPlain?.toLowerCase().includes(queryLower)
+        );
+      }
+      
+      jobs.forEach(job => allJobs.push(normalizeLeverJob(job, company)));
+      
+      // Rate limiting
+      await new Promise(resolve => setTimeout(resolve, 100));
+    } catch (error) {
+      // Silently skip failed companies
+    }
+  }
+  
+  console.log(`[Lever] Found ${allJobs.length} jobs`);
+  return allJobs;
+}
+
 // Aggregator
 async function fetchAllJobs(options = {}) {
   const {
@@ -214,10 +326,13 @@ async function fetchAllJobs(options = {}) {
   } = options;
 
   const fetchPromises = [];
+  
   if (sources.includes('adzuna')) fetchPromises.push(fetchAdzunaJobs(query, location, page, 20));
   if (sources.includes('remotive')) fetchPromises.push(fetchRemotiveJobs(query, location, 50));
   if (sources.includes('arbeitnow')) fetchPromises.push(fetchArbeitnowJobs(query, location, page));
   if (sources.includes('jsearch')) fetchPromises.push(fetchJSearchJobs(query, location, page));
+  if (sources.includes('greenhouse')) fetchPromises.push(fetchGreenhouseJobs(query, location));
+  if (sources.includes('lever')) fetchPromises.push(fetchLeverJobs(query, location));
 
   const results = await Promise.allSettled(fetchPromises);
 
@@ -242,6 +357,8 @@ function getAvailableSources() {
     remotive: { name: 'Remotive', configured: true, free: true },
     arbeitnow: { name: 'Arbeitnow', configured: true, free: true },
     jsearch: { name: 'JSearch', configured: !!CONFIG.jsearch.apiKey, free: false },
+    greenhouse: { name: 'Greenhouse', configured: true, free: true },
+    lever: { name: 'Lever', configured: true, free: true },
   };
 }
 
@@ -251,5 +368,7 @@ module.exports = {
   fetchRemotiveJobs,
   fetchArbeitnowJobs,
   fetchJSearchJobs,
+  fetchGreenhouseJobs,
+  fetchLeverJobs,
   getAvailableSources,
 };
