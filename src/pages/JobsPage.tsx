@@ -224,7 +224,7 @@ const JobsPage: React.FC = () => {
             {!loading && !error && <p className="text-gray-600 dark:text-gray-400 mb-6">Showing <span className="font-semibold text-gray-900 dark:text-white">{sortedJobs.length}</span> of <span className="font-semibold text-gray-900 dark:text-white">{totalJobs?.toLocaleString() || 0}</span> jobs{totalPages > 1 && <span> • Page <span className="font-semibold">{page}</span> of <span className="font-semibold">{totalPages}</span></span>}</p>}
             {sortedJobs.length > 0 ? (
               <>
-                <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6' : 'space-y-4'}>{sortedJobs.map(job => <JobCard key={job.id} job={job} viewMode={viewMode} onBookmark={toggleBookmark} isBookmarked={isBookmarked(job.id)} />)}</div>
+                <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6' : 'space-y-4'}>{sortedJobs.map(job => <JobCard key={job.id} job={job} viewMode={viewMode} onBookmark={(id) => { const job = sortedJobs.find(j => j.id === id); if (job) toggleBookmark(job); }} isBookmarked={isBookmarked(job.id)} />)}</div>
                 {totalPages > 1 && (
                   <nav className="flex flex-col sm:flex-row justify-between items-center gap-4 mt-12">
                     <div className="text-gray-600 dark:text-gray-400 text-sm">Page {page} of {totalPages}</div>
