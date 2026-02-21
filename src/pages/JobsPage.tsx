@@ -47,9 +47,9 @@ const JobsPage: React.FC = () => {
     const stored = localStorage.getItem('jobnext-filters');
     if (stored) { try { return { ...defaultFilters, ...JSON.parse(stored) }; } catch {} }
     return defaultFilters;
-  const { bookmarks, toggleBookmark, isBookmarked } = useBookmarks();
   });
 
+  const { bookmarks, toggleBookmark, isBookmarked } = useBookmarks();
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const debouncedLocation = useDebounce(locationFilter, 300);
   const { searchHistory, addToHistory, removeFromHistory, clearHistory } = useSearchHistory();
