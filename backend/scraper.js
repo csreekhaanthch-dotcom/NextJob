@@ -1,9 +1,25 @@
 /**
  * Job Scraper Module - JavaScript
- * Sources: Remotive, Arbeitnow, RemoteOK, USAJOBS, Adzuna, JSearch
+ * Sources: Remotive, Arbeitnow, RemoteOK, USAJOBS, Adzuna, JSearch, Greenhouse, Lever, Custom
  */
 
 const fetch = require('node-fetch');
+
+// Import new ATS scrapers
+let greenhouseScraper, leverScraper;
+try {
+  const greenhouseModule = require('./src/scrapers/greenhouse');
+  greenhouseScraper = greenhouseModule.scraper;
+} catch (error) {
+  console.warn('Greenhouse scraper not available:', error.message);
+}
+
+try {
+  const leverModule = require('./src/scrapers/lever');
+  leverScraper = leverModule.scraper;
+} catch (error) {
+  console.warn('Lever scraper not available:', error.message);
+}
 
 const CONFIG = {
   adzuna: {
@@ -303,15 +319,41 @@ async function fetchAllJobs(options = {}) {
     location = '',
     page = 1,
     sources = ['remotive', 'arbeitnow', 'remoteok'],
+    useATS = true, // Enable ATS scrapers by default
+    priority = 2, // Priority level for ATS scrapers (1=highest priority companies)
   } = options;
 
   const fetchPromises = [];
+
+  // Original job board APIs
   if (sources.includes('adzuna')) fetchPromises.push(fetchAdzunaJobs(query, location, page, 20));
   if (sources.includes('remotive')) fetchPromises.push(fetchRemotiveJobs(query, location, 50));
   if (sources.includes('arbeitnow')) fetchPromises.push(fetchArbeitnowJobs(query, location, page));
   if (sources.includes('remoteok')) fetchPromises.push(fetchRemoteOKJobs(query, location));
   if (sources.includes('usajobs')) fetchPromises.push(fetchUSAJOBSJobs(query, location, page, 20));
   if (sources.includes('jsearch')) fetchPromises.push(fetchJSearchJobs(query, location, page));
+
+  // ATS scrapers (new - 100+ companies)
+  if (useATS) {
+    if (sources.includes('greenhouse') && greenhouseScraper) {
+      fetchPromises.push(
+        greenhouseScraper.fetchJobs({ query, location, priority })
+          .catch(err => {
+            console.error('[Greenhouse] Error:', err.message);
+            return [];
+          })
+      );
+    }
+    if (sources.includes('lever') && leverScraper) {
+      fetchPromises.push(
+        leverScraper.fetchJobs({ query, location, priority })
+          .catch(err => {
+            console.error('[Lever] Error:', err.message);
+            return [];
+          })
+      );
+    }
+  }
 
   const results = await Promise.allSettled(fetchPromises);
   let allJobs = [];
@@ -330,14 +372,60 @@ async function fetchAllJobs(options = {}) {
 }
 
 function getAvailableSources() {
-  return {
-    remotive: { name: 'Remotive', configured: true, free: true },
-    arbeitnow: { name: 'Arbeitnow', configured: true, free: true },
-    remoteok: { name: 'RemoteOK', configured: true, free: true },
-    usajobs: { name: 'USAJOBS', configured: true, free: true },
-    adzuna: { name: 'Adzuna', configured: !!(CONFIG.adzuna.appId && CONFIG.adzuna.apiKey), free: false },
-    jsearch: { name: 'JSearch', configured: !!CONFIG.jsearch.apiKey, free: false },
+  const sources = {
+    // Original job board APIs
+    remotive: { name: 'Remotive', configured: true, free: true, category: 'job-board' },
+    arbeitnow: { name: 'Arbeitnow', configured: true, free: true, category: 'job-board' },
+    remoteok: { name: 'RemoteOK', configured: true, free: true, category: 'job-board' },
+    usajobs: { name: 'USAJOBS', configured: true, free: true, category: 'job-board' },
+    adzuna: { name: 'Adzuna', configured: !!(CONFIG.adzuna.appId && CONFIG.adzuna.apiKey), free: false, category: 'job-board' },
+    jsearch: { name: 'JSearch', configured: !!CONFIG.jsearch.apiKey, free: false, category: 'job-board' },
+
+    // ATS scrapers (new)
+    greenhouse: {
+      name: 'Greenhouse',
+      configured: !!greenhouseScraper,
+      free: true,
+      category: 'ats',
+      description: '60+ companies including Stripe, Airbnb, Uber, Dropbox',
+      companies: greenhouseScraper ? greenhouseScraper.getAvailableSources().length : 0,
+    },
+    lever: {
+      name: 'Lever',
+      configured: !!leverScraper,
+      free: true,
+      category: 'ats',
+      description: '10+ companies including Netflix, Shopify',
+      companies: leverScraper ? leverScraper.getAvailableSources().length : 0,
+    },
   };
+
+  return sources;
+}
+
+/**
+ * Get detailed information about ATS companies
+ */
+function getATSSources() {
+  const result = {};
+
+  if (greenhouseScraper) {
+    result.greenhouse = {
+      name: 'Greenhouse ATS',
+      companies: greenhouseScraper.getAvailableSources(),
+      total: greenhouseScraper.getAvailableSources().length,
+    };
+  }
+
+  if (leverScraper) {
+    result.lever = {
+      name: 'Lever ATS',
+      companies: leverScraper.getAvailableSources(),
+      total: leverScraper.getAvailableSources().length,
+    };
+  }
+
+  return result;
 }
 
 module.exports = {
@@ -349,4 +437,5 @@ module.exports = {
   fetchAdzunaJobs,
   fetchJSearchJobs,
   getAvailableSources,
+  getATSSources,
 };
