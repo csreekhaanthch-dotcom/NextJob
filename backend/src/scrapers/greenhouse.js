@@ -15,8 +15,8 @@ class GreenhouseScraper extends BaseScraper {
       ...options,
     });
 
-    // Rate limiter: 100 requests per minute
-    this.rateLimiter = new RateLimiter(100, 60000);
+    // Rate limiter: 60 requests per minute (1 request per second)
+    this.rateLimiter = new RateLimiter(60, 60000);
     
     // Get enabled companies
     this.companies = companiesConfig.getEnabledCompanies('greenhouse');
