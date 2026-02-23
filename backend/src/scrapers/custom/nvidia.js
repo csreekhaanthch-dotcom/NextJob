@@ -1,20 +1,20 @@
 /**
- * Tesla Jobs Scraper
- * Scrapes job listings from Tesla's careers page
- * URL: https://www.tesla.com/careers
+ * NVIDIA Jobs Scraper
+ * Scrapes job listings from NVIDIA's careers page
+ * URL: https://www.nvidia.com/en-us/about-nvidia/careers
  *
- * Note: Tesla uses a custom careers system that may change frequently.
+ * Note: NVIDIA uses a custom careers system that may change frequently.
  * This scraper attempts to fetch from their public API if available,
  * otherwise returns an empty array.
  */
 
 const { BaseScraper, RateLimiter, logger } = require('../base');
 
-class TeslaScraper extends BaseScraper {
+class NVIDIASScraper extends BaseScraper {
   constructor(options = {}) {
     super({
-      name: 'Tesla',
-      baseUrl: 'https://www.tesla.com',
+      name: 'NVIDIA',
+      baseUrl: 'https://www.nvidia.com',
       ...options,
     });
 
@@ -23,37 +23,37 @@ class TeslaScraper extends BaseScraper {
   }
 
   /**
-   * Fetch jobs from Tesla careers
+   * Fetch jobs from NVIDIA careers
    */
   async fetchJobs(options = {}) {
     const { query = '', location = '', limit = 50 } = options;
 
     try {
-      // Tesla doesn't have a public API, so we'll return an empty array
+      // NVIDIA doesn't have a public API, so we'll return an empty array
       // In production, this would require a headless browser or web scraping
-      logger.warn('Tesla scraper: No public API available, requires headless browser scraping');
+      logger.warn('NVIDIA scraper: No public API available, requires headless browser scraping');
       return [];
     } catch (error) {
-      logger.error(`Error fetching Tesla jobs: ${error.message}`);
+      logger.error(`Error fetching NVIDIA jobs: ${error.message}`);
       return [];
     }
   }
 
   /**
-   * Normalize Tesla job data
+   * Normalize NVIDIA job data
    */
   normalizeJob(job) {
     return {
-      id: `tesla-${job.id || Math.random().toString(36).substr(2, 9)}`,
+      id: `nvidia-${job.id || Math.random().toString(36).substr(2, 9)}`,
       title: job.title || '',
-      company: 'Tesla',
+      company: 'NVIDIA',
       location: job.location || '',
       description: (job.description || '').substring(0, 2000),
-      url: job.url || `https://www.tesla.com/careers/job/${job.id}`,
+      url: job.url || `https://www.nvidia.com/en-us/about-nvidia/careers/job/${job.id}`,
       salary: '',
       job_type: job.type || '',
       posted_at: new Date().toISOString(),
-      source: 'Tesla',
+      source: 'NVIDIA',
       is_remote: job.location?.toLowerCase().includes('remote') || false,
       tags: job.categories || [],
     };
@@ -61,7 +61,7 @@ class TeslaScraper extends BaseScraper {
 }
 
 module.exports = {
-  TeslaScraper,
-  scraper: new TeslaScraper(),
-  fetchJobs: (options) => new TeslaScraper().fetchJobs(options),
+  NVIDIASScraper,
+  scraper: new NVIDIASScraper(),
+  fetchJobs: (options) => new NVIDIASScraper().fetchJobs(options),
 };
