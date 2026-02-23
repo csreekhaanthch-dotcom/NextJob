@@ -6,7 +6,7 @@
 const fetch = require('node-fetch');
 
 // Import new ATS scrapers
-let greenhouseScraper, leverScraper;
+let greenhouseScraper, leverScraper, customScrapers;
 try {
   const greenhouseModule = require('./src/scrapers/greenhouse');
   greenhouseScraper = greenhouseModule.scraper;
@@ -19,6 +19,14 @@ try {
   leverScraper = leverModule.scraper;
 } catch (error) {
   console.warn('Lever scraper not available:', error.message);
+}
+
+// Import custom scrapers
+try {
+  const customModule = require('./src/scrapers/index');
+  customScrapers = customModule;
+} catch (error) {
+  console.warn('Custom scrapers not available:', error.message);
 }
 
 const CONFIG = {
@@ -320,6 +328,7 @@ async function fetchAllJobs(options = {}) {
     page = 1,
     sources = ['remotive', 'arbeitnow', 'remoteok'],
     useATS = true, // Enable ATS scrapers by default
+    useCustom = true, // Enable custom scrapers by default
     priority = 2, // Priority level for ATS scrapers (1=highest priority companies)
   } = options;
 
@@ -355,6 +364,25 @@ async function fetchAllJobs(options = {}) {
     }
   }
 
+  // Custom scrapers (new - 10+ major companies)
+  if (useCustom && customScrapers) {
+    const allCustomScrapers = customScrapers.getAllScrapers();
+
+    for (const [name, scraper] of Object.entries(allCustomScrapers)) {
+      if (sources.includes(name) || sources.includes('custom')) {
+        if (scraper && scraper.enabled) {
+          fetchPromises.push(
+            scraper.fetchJobs({ query, location })
+              .catch(err => {
+                console.error(`[${name}] Error:`, err.message);
+                return [];
+              })
+          );
+        }
+      }
+    }
+  }
+
   const results = await Promise.allSettled(fetchPromises);
   let allJobs = [];
   results.forEach(result => {
@@ -381,13 +409,13 @@ function getAvailableSources() {
     adzuna: { name: 'Adzuna', configured: !!(CONFIG.adzuna.appId && CONFIG.adzuna.apiKey), free: false, category: 'job-board' },
     jsearch: { name: 'JSearch', configured: !!CONFIG.jsearch.apiKey, free: false, category: 'job-board' },
 
-    // ATS scrapers (new)
+    // ATS scrapers (new - 100+ companies)
     greenhouse: {
       name: 'Greenhouse',
       configured: !!greenhouseScraper,
       free: true,
       category: 'ats',
-      description: '60+ companies including Stripe, Airbnb, Uber, Dropbox',
+      description: '80+ companies including Stripe, Airbnb, Uber, Dropbox',
       companies: greenhouseScraper ? greenhouseScraper.getAvailableSources().length : 0,
     },
     lever: {
@@ -395,10 +423,34 @@ function getAvailableSources() {
       configured: !!leverScraper,
       free: true,
       category: 'ats',
-      description: '10+ companies including Netflix, Shopify',
+      description: '20+ companies including Netflix, Shopify',
       companies: leverScraper ? leverScraper.getAvailableSources().length : 0,
     },
+
+    // Custom scrapers (new - 10+ major companies)
+    custom: {
+      name: 'Custom',
+      configured: !!customScrapers,
+      free: true,
+      category: 'custom',
+      description: 'Major tech companies with custom career pages',
+      companies: customScrapers ? Object.keys(customScrapers.getAllScrapers()).length : 0,
+    },
   };
+
+  // Add individual custom scrapers
+  if (customScrapers) {
+    const allCustomScrapers = customScrapers.getAllScrapers();
+    for (const [name, scraper] of Object.entries(allCustomScrapers)) {
+      sources[name] = {
+        name: scraper.name || name.charAt(0).toUpperCase() + name.slice(1),
+        configured: !!scraper,
+        free: true,
+        category: 'custom',
+        description: `${scraper.name || name} jobs scraper`,
+      };
+    }
+  }
 
   return sources;
 }

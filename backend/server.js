@@ -25,6 +25,7 @@ const searchSchema = Joi.object({
     Joi.array().items(Joi.string())
   ),
   useATS: Joi.string().valid('true', 'false'),
+  useCustom: Joi.string().valid('true', 'false'),
 }).unknown(true);
 
 app.get('/health', (req, res) => {
@@ -38,7 +39,7 @@ app.get('/api/jobs', async (req, res) => {
       return res.status(400).json({ error: 'Invalid parameters', details: error.details });
     }
 
-    const { search, location, page = 1, limit = 20, sources, useATS = 'true' } = value;
+    const { search, location, page = 1, limit = 20, sources, useATS = 'true', useCustom = 'true' } = value;
 
     // Parse sources parameter
     let sourcesArray = ['adzuna', 'remotive', 'arbeitnow', 'greenhouse', 'lever'];
@@ -56,6 +57,7 @@ app.get('/api/jobs', async (req, res) => {
       page: parseInt(page),
       sources: sourcesArray,
       useATS: useATS !== 'false', // Enable ATS scrapers by default
+      useCustom: useCustom !== 'false', // Enable custom scrapers by default
       priority: 2, // Include priority 1 and 2 companies
     });
 

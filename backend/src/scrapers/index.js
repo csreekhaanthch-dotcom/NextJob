@@ -14,6 +14,9 @@ const { LeverScraper, scraper: leverScraper } = require('./lever');
 const { GoogleScraper, scraper: googleScraper } = require('./custom/google');
 const { AppleScraper, scraper: appleScraper } = require('./custom/apple');
 const { TeslaScraper, scraper: teslaScraper } = require('./custom/tesla');
+const { SpotifyScraper, scraper: spotifyScraper } = require('./custom/spotify');
+const { NVIDIASScraper, scraper: nvidiaScraper } = require('./custom/nvidia');
+const { MetaScraper, scraper: metaScraper } = require('./custom/meta');
 
 module.exports = {
   // Base classes
@@ -35,6 +38,12 @@ module.exports = {
   appleScraper,
   TeslaScraper,
   teslaScraper,
+  SpotifyScraper,
+  spotifyScraper,
+  NVIDIASScraper,
+  nvidiaScraper,
+  MetaScraper,
+  metaScraper,
 
   // Helper function to get all enabled scrapers
   getAllScrapers() {
@@ -44,6 +53,9 @@ module.exports = {
       google: googleScraper,
       apple: appleScraper,
       tesla: teslaScraper,
+      spotify: spotifyScraper,
+      nvidia: nvidiaScraper,
+      meta: metaScraper,
     };
   },
 
