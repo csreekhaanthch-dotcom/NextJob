@@ -1,18 +1,26 @@
 services:
-  # Backend API Service
   - type: web
-    name: nextjob-backend
+    name: nextjob
     env: node
-    region: oregon
     plan: free
-    buildCommand: rm -f pnpm-lock.yaml yarn.lock && npm install
-    startCommand: npm start
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: 10000
+      - key: DATABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        sync: false
+      - key: JSEARCH_API_KEY
+        sync: false
       - key: ADZUNA_APP_ID
         sync: false
       - key: ADZUNA_API_KEY
         sync: false
+      - key: NEXTAUTH_SECRET
+        generateValue: true
+      - key: NEXTAUTH_URL
+        value: https://nextjob.onrender.com
