@@ -1,0 +1,85 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Profile {
+  id          String   @id @default(cuid())
+  user_id     String   @unique
+  email       String   @unique
+  full_name   String?
+  avatar_url  String?
+  resume_text String?  @db.Text
+  skills      String[]
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  @@index([email])
+}
+
+model Job {
+  id          String   @id @default(cuid())
+  external_id String   @unique
+  title       String
+  company     String
+  location    String
+  description String   @db.Text
+  url         String
+  source      String
+  is_remote   Boolean  @default(false)
+  created_at  DateTime @default(now())
+
+  @@index([company])
+  @@index([source])
+}
+
+model CompanyReview {
+  id           String   @id @default(cuid())
+  company_name String
+  rating       Int
+  job_title    String
+  pros         String   @db.Text
+  cons         String   @db.Text
+  created_at   DateTime @default(now())
+
+  @@index([company_name])
+}
+
+model Application {
+  id           String   @id @default(cuid())
+  status       String   @default("saved")
+  notes        String   @db.Text
+  user_id      String
+  job_id       String
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  @@index([status])
+}
+
+model SalaryData {
+  id           String   @id @default(cuid())
+  company_name String
+  job_title    String
+  location     String
+  salary_min   Float
+  salary_max   Float
+  created_at   DateTime @default(now())
+
+  @@index([company_name])
+}
+
+model InterviewQuestion {
+  id           String   @id @default(cuid())
+  company_name String
+  job_title    String
+  question     String   @db.Text
+  difficulty   String   @default("medium")
+  created_at   DateTime @default(now())
+
+  @@index([company_name])
+}
