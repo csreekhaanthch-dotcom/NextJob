@@ -42,7 +42,7 @@ app.get('/api/jobs', async (req, res) => {
     const { search, location, page = 1, limit = 20, sources, useATS = 'true', useCustom = 'true' } = value;
 
     // Parse sources parameter
-    let sourcesArray = ['adzuna', 'remotive', 'arbeitnow', 'greenhouse', 'lever'];
+    let sourcesArray = ['remotive', 'arbeitnow', 'greenhouse', 'lever', 'remoteok', 'usajobs'];
     if (sources) {
       if (typeof sources === 'string') {
         sourcesArray = sources.split(',').map(s => s.trim());
