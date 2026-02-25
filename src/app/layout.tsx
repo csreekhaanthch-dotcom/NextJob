@@ -2,8 +2,8 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'NextJob - AI Career Platform',
-  description: 'Find your dream job with AI-powered matching',
+  title: 'NextJob - AI-Powered Career Platform',
+  description: 'Find your dream job with AI-powered job matching, resume analysis, and interview preparation',
 }
 
 export default function RootLayout({
@@ -12,8 +12,10 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
-      <body>{children}</body>
+    <html lang="en" suppressHydrationWarning>
+      <body className="min-h-screen bg-background font-sans antialiased">
+        {children}
+      </body>
     </html>
   )
 }
