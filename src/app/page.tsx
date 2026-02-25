@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/separator'
 import { Switch } from '@/components/ui/switch'
+import { toast } from 'sonner'
 import { 
   Search, MapPin, Briefcase, Building2, Star, 
   Clock, DollarSign, FileText, MessageSquare, 
@@ -164,6 +165,7 @@ export default function NextJobPlatform() {
   const [savedJobs, setSavedJobs] = useState<Job[]>([])
   const [companyIntel, setCompanyIntel] = useState<CompanyIntel | null>(null)
   const [loadingCompanyIntel, setLoadingCompanyIntel] = useState(false)
+  const [companySearchInput, setCompanySearchInput] = useState('') // ADDED: Company search input state
   const [jobAlerts, setJobAlerts] = useState<JobAlert[]>([])
   const [showAlertDialog, setShowAlertDialog] = useState(false)
   const [newAlert, setNewAlert] = useState({ name: '', search_query: '', frequency: 'daily', remote_only: false })
@@ -188,18 +190,19 @@ export default function NextJobPlatform() {
       setTotalPages(data.totalPages || 0)
     } catch (error) {
       console.error('Search failed:', error)
+      toast.error('Search failed', { description: 'Please try again' })
     } finally {
       setLoading(false)
     }
   }, [search, location, page, userProfile, showMatchScores])
   
   useEffect(() => { 
-  searchJobs() 
-}, []) // Empty array to run only on mount
+    searchJobs() 
+  }, []) // Empty array to run only on mount
 
-useEffect(() => { 
-  if (page > 1) searchJobs() 
-}, [page])
+  useEffect(() => { 
+    if (page > 1) searchJobs() 
+  }, [page])
   
   useEffect(() => {
     const saved = localStorage.getItem('savedJobs')
@@ -217,10 +220,15 @@ useEffect(() => {
     const updated = isSaved ? savedJobs.filter((j: Job) => j.id !== job.id) : [...savedJobs, job]
     setSavedJobs(updated)
     localStorage.setItem('savedJobs', JSON.stringify(updated))
+    toast.success(isSaved ? 'Job removed' : 'Job saved!', { description: job.title })
   }
   
+  // FIXED: Improved error handling for resume analysis
   const analyzeResume = async () => {
-    if (!resumeText.trim()) return
+    if (!resumeText.trim()) {
+      toast.warning('Resume required', { description: 'Please paste your resume text' })
+      return
+    }
     setAnalyzingResume(true)
     setResumeAnalysis(null)
     try {
@@ -229,17 +237,30 @@ useEffect(() => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'analyze-resume', resumeText })
       })
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
       const data = await response.json()
+      
+      if (data.error) {
+        throw new Error(data.error)
+      }
+      
       setResumeAnalysis(data.analysis)
       setUserProfile(resumeText)
       localStorage.setItem('userProfile', resumeText)
-    } catch (error) {
+      toast.success('Resume analyzed!', { description: `Score: ${data.analysis?.overall_score || 'N/A'}/100` })
+    } catch (error: any) {
       console.error(error)
+      toast.error('Analysis failed', { description: error.message || 'Please try again' })
     } finally {
       setAnalyzingResume(false)
     }
   }
   
+  // FIXED: Improved error handling for interview questions
   const generateInterviewQuestions = async (job: Job) => {
     setSelectedInterviewJob(job)
     setGeneratingQuestions(true)
@@ -250,10 +271,22 @@ useEffect(() => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'interview-questions', job })
       })
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
       const data = await response.json()
+      
+      if (data.error) {
+        throw new Error(data.error)
+      }
+      
       setInterviewQuestions(data.questions || [])
-    } catch (error) {
+      toast.success('Questions generated!', { description: `${data.questions?.length || 0} questions ready` })
+    } catch (error: any) {
       console.error(error)
+      toast.error('Generation failed', { description: error.message || 'Please try again' })
     } finally {
       setGeneratingQuestions(false)
     }
@@ -296,12 +329,17 @@ useEffect(() => {
       }
     } catch (error) {
       console.error(error)
+      toast.error('Failed to load company data')
     } finally {
       setLoadingCompanyIntel(false)
     }
   }
   
   const createJobAlert = () => {
+    if (!newAlert.search_query) {
+      toast.warning('Search query required')
+      return
+    }
     const alert: JobAlert = {
       id: `alert-${Date.now()}`,
       name: newAlert.name || `Alert for "${newAlert.search_query}"`,
@@ -316,32 +354,42 @@ useEffect(() => {
     localStorage.setItem('jobAlerts', JSON.stringify(updated))
     setShowAlertDialog(false)
     setNewAlert({ name: '', search_query: '', frequency: 'daily', remote_only: false })
+    toast.success('Job alert created!', { description: `We'll notify you about "${alert.search_query}" jobs` })
   }
   
   const toggleAlert = (id: string) => {
     const updated = jobAlerts.map((a: JobAlert) => a.id === id ? { ...a, is_active: !a.is_active } : a)
     setJobAlerts(updated)
     localStorage.setItem('jobAlerts', JSON.stringify(updated))
+    const alert = jobAlerts.find((a: JobAlert) => a.id === id)
+    toast.success(alert?.is_active ? 'Alert paused' : 'Alert activated')
   }
   
   const deleteAlert = (id: string) => {
     const updated = jobAlerts.filter((a: JobAlert) => a.id !== id)
     setJobAlerts(updated)
     localStorage.setItem('jobAlerts', JSON.stringify(updated))
+    toast.success('Alert deleted')
   }
   
   const handleAuth = async () => {
+    if (!authEmail) {
+      toast.warning('Email required')
+      return
+    }
     const newUser: User = { id: `user-${Date.now()}`, email: authEmail, full_name: authName || authEmail.split('@')[0] }
     setUser(newUser)
     localStorage.setItem('user', JSON.stringify(newUser))
     setShowAuthDialog(false)
     setAuthEmail('')
     setAuthName('')
+    toast.success('Welcome to NextJob!', { description: `Signed in as ${newUser.full_name}` })
   }
   
   const handleLogout = () => {
     setUser(null)
     localStorage.removeItem('user')
+    toast.success('Logged out successfully')
   }
   
   const getScoreColor = (score: number) => {
@@ -552,8 +600,27 @@ useEffect(() => {
                 <CardHeader><CardTitle>Search Company</CardTitle></CardHeader>
                 <CardContent>
                   <div className="flex gap-2">
-                    <Input placeholder="Company name..." onKeyDown={(e) => e.key === 'Enter' && fetchCompanyIntel((e.target as HTMLInputElement).value)} />
-                    <Button>Search</Button>
+                    {/* FIXED: Added controlled input and proper onClick handler */}
+                    <Input 
+                      placeholder="Company name..." 
+                      value={companySearchInput}
+                      onChange={(e) => setCompanySearchInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && companySearchInput.trim()) {
+                          fetchCompanyIntel(companySearchInput.trim())
+                        }
+                      }}
+                    />
+                    <Button 
+                      onClick={() => {
+                        if (companySearchInput.trim()) {
+                          fetchCompanyIntel(companySearchInput.trim())
+                        }
+                      }}
+                      disabled={!companySearchInput.trim() || loadingCompanyIntel}
+                    >
+                      {loadingCompanyIntel ? <RefreshCw className="w-4 h-4 animate-spin" /> : 'Search'}
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
@@ -588,7 +655,7 @@ useEffect(() => {
               <Card className="lg:col-span-2">
                 <CardHeader><CardTitle>Popular Companies</CardTitle></CardHeader>
                 <CardContent><div className="flex flex-wrap gap-2">{['Google', 'Microsoft', 'Apple', 'Amazon', 'Meta', 'Netflix'].map((c) => (
-                  <Button key={c} onClick={() => fetchCompanyIntel(c)}>{c}</Button>
+                  <Button key={c} onClick={() => { setCompanySearchInput(c); fetchCompanyIntel(c); }}>{c}</Button>
                 ))}</div></CardContent>
               </Card>
             </div>
@@ -655,8 +722,8 @@ useEffect(() => {
               <Card>
                 <CardHeader><CardTitle>Quick Actions</CardTitle></CardHeader>
                 <CardContent className="space-y-3">
-                  <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg"><Sparkles className="w-5 h-5 text-blue-600" /><div><p className="font-medium text-sm">Analyze Resume</p><p className="text-xs text-gray-500">Get AI insights</p></div></div>
-                  <div className="flex items-center gap-3 p-3 bg-purple-50 rounded-lg"><MessageSquare className="w-5 h-5 text-purple-600" /><div><p className="font-medium text-sm">Practice Interview</p><p className="text-xs text-gray-500">Prepare with AI</p></div></div>
+                  <div onClick={() => setActiveTab('resume')} className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg cursor-pointer hover:bg-blue-100"><Sparkles className="w-5 h-5 text-blue-600" /><div><p className="font-medium text-sm">Analyze Resume</p><p className="text-xs text-gray-500">Get AI insights</p></div></div>
+                  <div onClick={() => setActiveTab('interview')} className="flex items-center gap-3 p-3 bg-purple-50 rounded-lg cursor-pointer hover:bg-purple-100"><MessageSquare className="w-5 h-5 text-purple-600" /><div><p className="font-medium text-sm">Practice Interview</p><p className="text-xs text-gray-500">Prepare with AI</p></div></div>
                 </CardContent>
               </Card>
             </div>
