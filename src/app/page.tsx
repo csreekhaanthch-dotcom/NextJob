@@ -193,7 +193,13 @@ export default function NextJobPlatform() {
     }
   }, [search, location, page, userProfile, showMatchScores])
   
-  useEffect(() => { searchJobs() }, [page])
+  useEffect(() => { 
+  searchJobs() 
+}, []) // Empty array to run only on mount
+
+useEffect(() => { 
+  if (page > 1) searchJobs() 
+}, [page])
   
   useEffect(() => {
     const saved = localStorage.getItem('savedJobs')
