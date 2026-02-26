@@ -18,7 +18,7 @@ import {
   Search, MapPin, Briefcase, Building2, Star, 
   Clock, DollarSign, FileText, MessageSquare, 
   ChevronRight, ExternalLink, Bookmark, BookmarkCheck,
-  Sparkles, Brain, Target,
+  Sparkles, Brain, Target, Globe,
   Bell, BellRing, CheckCircle, XCircle,
   LogIn, LogOut, Lightbulb, HelpCircle, RefreshCw, Play, Pause,
   Sun, Moon
@@ -38,6 +38,8 @@ interface Job {
   is_remote: boolean
   source: string
   match_score?: number
+  platform?: string
+  verified?: boolean
 }
 
 interface CompanyIntel {
@@ -91,6 +93,13 @@ interface User {
   id: string
   email: string
   full_name?: string
+}
+
+interface AdvancedFilters {
+  jobType: string
+  remoteOnly: boolean
+  platformFilter: string
+  careerPages: boolean
 }
 
 function CompanyLogo({ company }: { company: string }) {
@@ -155,6 +164,13 @@ export default function NextJobPlatform() {
   const [activeTab, setActiveTab] = useState('jobs')
   const [userProfile, setUserProfile] = useState('')
   const [showMatchScores, setShowMatchScores] = useState(false)
+  const [showFilters, setShowFilters] = useState(false)
+  const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilters>({
+    jobType: '',
+    remoteOnly: false,
+    platformFilter: '',
+    careerPages: true
+  })
   const [resumeText, setResumeText] = useState('')
   const [resumeAnalysis, setResumeAnalysis] = useState<ResumeAnalysis | null>(null)
   const [analyzingResume, setAnalyzingResume] = useState(false)
@@ -165,7 +181,7 @@ export default function NextJobPlatform() {
   const [savedJobs, setSavedJobs] = useState<Job[]>([])
   const [companyIntel, setCompanyIntel] = useState<CompanyIntel | null>(null)
   const [loadingCompanyIntel, setLoadingCompanyIntel] = useState(false)
-  const [companySearchInput, setCompanySearchInput] = useState('') // ADDED: Company search input state
+  const [companySearchInput, setCompanySearchInput] = useState('')
   const [jobAlerts, setJobAlerts] = useState<JobAlert[]>([])
   const [showAlertDialog, setShowAlertDialog] = useState(false)
   const [newAlert, setNewAlert] = useState({ name: '', search_query: '', frequency: 'daily', remote_only: false })
@@ -183,26 +199,27 @@ export default function NextJobPlatform() {
       if (userProfile && showMatchScores) params.append('profile', userProfile)
       params.append('page', String(page))
       params.append('limit', '12')
+      if (advancedFilters.jobType) params.append('job_type', advancedFilters.jobType)
+      if (advancedFilters.remoteOnly) params.append('remote', 'true')
+      if (advancedFilters.careerPages) params.append('careerPages', 'true')
+      if (advancedFilters.platformFilter) params.append('platform', advancedFilters.platformFilter)
+      
       const response = await fetch(`/api/jobs?${params.toString()}`)
       const data = await response.json()
       setJobs(data.jobs || [])
       setTotal(data.total || 0)
       setTotalPages(data.totalPages || 0)
+      toast.success(`Found ${data.total || 0} jobs`, { description: 'From multiple sources' })
     } catch (error) {
       console.error('Search failed:', error)
       toast.error('Search failed', { description: 'Please try again' })
     } finally {
       setLoading(false)
     }
-  }, [search, location, page, userProfile, showMatchScores])
+  }, [search, location, page, userProfile, showMatchScores, advancedFilters])
   
-  useEffect(() => { 
-    searchJobs() 
-  }, []) // Empty array to run only on mount
-
-  useEffect(() => { 
-    if (page > 1) searchJobs() 
-  }, [page])
+  useEffect(() => { searchJobs() }, [])
+  useEffect(() => { if (page > 1) searchJobs() }, [page])
   
   useEffect(() => {
     const saved = localStorage.getItem('savedJobs')
@@ -223,7 +240,6 @@ export default function NextJobPlatform() {
     toast.success(isSaved ? 'Job removed' : 'Job saved!', { description: job.title })
   }
   
-  // FIXED: Improved error handling for resume analysis
   const analyzeResume = async () => {
     if (!resumeText.trim()) {
       toast.warning('Resume required', { description: 'Please paste your resume text' })
@@ -237,17 +253,9 @@ export default function NextJobPlatform() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'analyze-resume', resumeText })
       })
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-      
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
       const data = await response.json()
-      
-      if (data.error) {
-        throw new Error(data.error)
-      }
-      
+      if (data.error) throw new Error(data.error)
       setResumeAnalysis(data.analysis)
       setUserProfile(resumeText)
       localStorage.setItem('userProfile', resumeText)
@@ -260,7 +268,6 @@ export default function NextJobPlatform() {
     }
   }
   
-  // FIXED: Improved error handling for interview questions
   const generateInterviewQuestions = async (job: Job) => {
     setSelectedInterviewJob(job)
     setGeneratingQuestions(true)
@@ -271,17 +278,9 @@ export default function NextJobPlatform() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'interview-questions', job })
       })
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-      
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
       const data = await response.json()
-      
-      if (data.error) {
-        throw new Error(data.error)
-      }
-      
+      if (data.error) throw new Error(data.error)
       setInterviewQuestions(data.questions || [])
       toast.success('Questions generated!', { description: `${data.questions?.length || 0} questions ready` })
     } catch (error: any) {
@@ -444,27 +443,93 @@ export default function NextJobPlatform() {
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                   <div className="md:col-span-2 relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    <Input placeholder="Search jobs..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" onKeyDown={(e) => e.key === 'Enter' && searchJobs()} />
+                    <Input placeholder="Search jobs, skills, companies..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" onKeyDown={(e) => e.key === 'Enter' && searchJobs()} />
                   </div>
                   <div className="relative">
                     <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    <Input placeholder="Location" value={location} onChange={(e) => setLocation(e.target.value)} className="pl-10" />
+                    <Input placeholder="Location" value={location} onChange={(e) => setLocation(e.target.value)} className="pl-10" onKeyDown={(e) => e.key === 'Enter' && searchJobs()} />
                   </div>
-                  <Button onClick={searchJobs} disabled={loading}>{loading ? 'Searching...' : 'Search'}</Button>
+                  <Button onClick={searchJobs} disabled={loading} className="bg-gradient-to-r from-blue-600 to-purple-600">
+                    {loading ? 'Searching...' : 'Search Jobs'}
+                  </Button>
                 </div>
+                
+                {/* Filters Toggle */}
                 <div className="mt-4 pt-4 border-t flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-purple-600" />
-                    <span className="text-sm">AI Job Matching</span>
-                    <Switch checked={showMatchScores} onCheckedChange={setShowMatchScores} />
+                  <button onClick={() => setShowFilters(!showFilters)} className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900">
+                    <Building2 className="w-4 h-4" />
+                    Advanced Filters
+                    {(advancedFilters.careerPages || advancedFilters.platformFilter || advancedFilters.remoteOnly) && (
+                      <Badge variant="secondary" className="ml-1">Active</Badge>
+                    )}
+                  </button>
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-purple-600" />
+                      <span className="text-sm">AI Matching</span>
+                      <Switch checked={showMatchScores} onCheckedChange={setShowMatchScores} />
+                    </div>
+                    <button onClick={() => setShowAlertDialog(true)} className="text-sm text-blue-600 flex items-center gap-1"><Bell className="w-4 h-4" /> Create Alert</button>
                   </div>
-                  <button onClick={() => setShowAlertDialog(true)} className="text-sm text-blue-600 flex items-center gap-1"><Bell className="w-4 h-4" /> Create Alert</button>
                 </div>
+                
+                {/* Advanced Filters Panel */}
+                {showFilters && (
+                  <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {/* Career Pages Toggle */}
+                      <div className="flex items-center gap-3 p-3 rounded-lg border bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20">
+                        <Building2 className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                        <div className="flex-1">
+                          <Label className="text-sm font-medium">Include Career Pages</Label>
+                          <p className="text-xs text-gray-500">60+ company career pages</p>
+                        </div>
+                        <Switch
+                          checked={advancedFilters.careerPages}
+                          onCheckedChange={(v) => setAdvancedFilters(prev => ({ ...prev, careerPages: v }))}
+                        />
+                      </div>
+                      
+                      {/* Platform Filter */}
+                      <div>
+                        <Label className="text-xs text-gray-500">Platform</Label>
+                        <Select 
+                          value={advancedFilters.platformFilter}
+                          onValueChange={(v) => setAdvancedFilters(prev => ({ ...prev, platformFilter: v }))}
+                        >
+                          <SelectTrigger className="mt-1">
+                            <SelectValue placeholder="All Platforms" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="">All Platforms</SelectItem>
+                            <SelectItem value="Greenhouse">Greenhouse</SelectItem>
+                            <SelectItem value="Lever">Lever</SelectItem>
+                            <SelectItem value="SmartRecruiters">SmartRecruiters</SelectItem>
+                            <SelectItem value="Ashby">Ashby</SelectItem>
+                            <SelectItem value="Remotive">Remotive</SelectItem>
+                            <SelectItem value="Arbeitnow">Arbeitnow</SelectItem>
+                            <SelectItem value="RemoteOK">RemoteOK</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      {/* Remote Only */}
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          checked={advancedFilters.remoteOnly}
+                          onCheckedChange={(v) => setAdvancedFilters(prev => ({ ...prev, remoteOnly: v }))}
+                        />
+                        <Label>Remote Only</Label>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
                 {showMatchScores && <Textarea placeholder="Paste your resume for AI matching..." value={userProfile} onChange={(e) => setUserProfile(e.target.value)} className="mt-3" />}
               </CardContent>
             </Card>
 
-            <p className="text-sm text-gray-600 mb-4">Found {total.toLocaleString()} jobs</p>
+            <p className="text-sm text-gray-600 mb-4">Found <strong>{total.toLocaleString()}</strong> jobs</p>
 
             {loading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{[...Array(6)].map((_, i) => <JobSkeleton key={i} />)}</div>
@@ -484,12 +549,32 @@ export default function NextJobPlatform() {
                             <span onClick={() => fetchCompanyIntel(job.company)} className="hover:text-blue-600 cursor-pointer">{job.company}</span>
                             <Separator orientation="vertical" className="h-4" />
                             <MapPin className="w-4 h-4" />
-                            <span>{job.location}</span>
+                            <span className="truncate">{job.location}</span>
                           </div>
-                          <div className="flex gap-2 mt-2">
-                            {job.is_remote && <span className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded">Remote</span>}
-                            <span className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded">{job.job_type}</span>
+                          
+                          {/* Badges with Platform and Verified */}
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {job.is_remote && (
+                              <Badge className="bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400">Remote</Badge>
+                            )}
+                            <Badge variant="outline">{job.job_type}</Badge>
+                            {job.source && (
+                              <Badge variant="outline" className="text-gray-500">
+                                <Globe className="w-3 h-3 mr-1" />
+                                {job.source}
+                              </Badge>
+                            )}
+                            {job.platform && (
+                              <Badge className="bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">{job.platform}</Badge>
+                            )}
+                            {job.verified && (
+                              <Badge className="bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200">
+                                <CheckCircle className="w-3 h-3 mr-1" />
+                                Verified
+                              </Badge>
+                            )}
                           </div>
+                          
                           <p className="text-sm text-gray-600 line-clamp-2 mt-2">{job.description}</p>
                           <div className="flex items-center gap-4 text-sm text-gray-500 mt-2">
                             {job.salary && <span className="text-green-600 font-medium">{job.salary}</span>}
@@ -501,9 +586,11 @@ export default function NextJobPlatform() {
                         <button onClick={() => toggleSaveJob(job)} className="p-2 hover:bg-gray-100 rounded">
                           {savedJobs.some((j: Job) => j.id === job.id) ? <BookmarkCheck className="w-4 h-4 text-blue-600" /> : <Bookmark className="w-4 h-4" />}
                         </button>
-                        <Button onClick={() => { setSelectedInterviewJob(job); setActiveTab('interview') }}>Prep</Button>
-                        <Button onClick={() => fetchCompanyIntel(job.company)}>Intel</Button>
-                        <a href={job.url} target="_blank" rel="noopener noreferrer" className="ml-auto"><Button>Apply <ExternalLink className="w-4 h-4 ml-1 inline" /></Button></a>
+                        <Button variant="outline" size="sm" onClick={() => { setSelectedInterviewJob(job); setActiveTab('interview') }}>Prep</Button>
+                        <Button variant="outline" size="sm" onClick={() => fetchCompanyIntel(job.company)}>Intel</Button>
+                        <a href={job.url} target="_blank" rel="noopener noreferrer" className="ml-auto">
+                          <Button size="sm" className="bg-gradient-to-r from-blue-600 to-purple-600">Apply <ExternalLink className="w-4 h-4 ml-1 inline" /></Button>
+                        </a>
                       </div>
                     </CardContent>
                   </Card>
@@ -525,27 +612,27 @@ export default function NextJobPlatform() {
               <Card>
                 <CardHeader><CardTitle>Resume Analyzer</CardTitle><CardDescription>Paste your resume for AI analysis</CardDescription></CardHeader>
                 <CardContent>
-                  <Textarea placeholder="Paste resume..." value={resumeText} onChange={(e) => setResumeText(e.target.value)} className="min-h-[300px]" />
+                  <Textarea placeholder="Paste your resume here..." value={resumeText} onChange={(e) => setResumeText(e.target.value)} className="min-h-[300px]" />
                   <Button onClick={analyzeResume} disabled={!resumeText.trim() || analyzingResume} className="w-full mt-4">
-                    {analyzingResume ? <><RefreshCw className="w-4 h-4 mr-2 animate-spin" /> Analyzing...</> : <><Brain className="w-4 h-4 mr-2" /> Analyze</>}
+                    {analyzingResume ? <><RefreshCw className="w-4 h-4 mr-2 animate-spin" /> Analyzing...</> : <><Brain className="w-4 h-4 mr-2" /> Analyze Resume</>}
                   </Button>
                 </CardContent>
               </Card>
               <Card>
-                <CardHeader><CardTitle>Results</CardTitle></CardHeader>
+                <CardHeader><CardTitle>Analysis Results</CardTitle></CardHeader>
                 <CardContent>
                   {!resumeAnalysis ? (
                     <div className="text-center py-12"><FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" /><p className="text-gray-500">Analyze your resume to see results</p></div>
                   ) : (
                     <div className="space-y-4">
-                      <div className="text-center p-4 bg-blue-50 rounded-xl">
+                      <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
                         <div className={`text-4xl font-bold ${getScoreColor(resumeAnalysis.overall_score)}`}>{resumeAnalysis.overall_score}</div>
                         <p className="text-sm text-gray-600">Overall Score</p>
                         <Progress value={resumeAnalysis.overall_score} className="mt-2" />
                       </div>
-                      <div><h4 className="font-semibold text-green-600 mb-2">Strengths</h4><ul className="text-sm">{resumeAnalysis.strengths.map((s: string, i: number) => <li key={i}>• {s}</li>)}</ul></div>
-                      <div><h4 className="font-semibold text-red-600 mb-2">Improve</h4><ul className="text-sm">{resumeAnalysis.weaknesses.map((w: string, i: number) => <li key={i}>• {w}</li>)}</ul></div>
-                      <div><h4 className="font-semibold text-blue-600 mb-2">Skills</h4><div className="flex flex-wrap gap-2">{resumeAnalysis.skills_detected.map((s: string, i: number) => <Badge key={i}>{s}</Badge>)}</div></div>
+                      <div><h4 className="font-semibold text-green-600 mb-2">Strengths</h4><ul className="text-sm space-y-1">{resumeAnalysis.strengths.map((s: string, i: number) => <li key={i}>• {s}</li>)}</ul></div>
+                      <div><h4 className="font-semibold text-red-600 mb-2">Areas to Improve</h4><ul className="text-sm space-y-1">{resumeAnalysis.weaknesses.map((w: string, i: number) => <li key={i}>• {w}</li>)}</ul></div>
+                      <div><h4 className="font-semibold text-blue-600 mb-2">Skills Detected</h4><div className="flex flex-wrap gap-2">{resumeAnalysis.skills_detected.map((s: string, i: number) => <Badge key={i}>{s}</Badge>)}</div></div>
                     </div>
                   )}
                 </CardContent>
@@ -566,7 +653,7 @@ export default function NextJobPlatform() {
                       </div>
                     ))}</div>
                   ) : (
-                    <Input placeholder="Job Title" value={selectedInterviewJob?.title || ''} onChange={(e) => setSelectedInterviewJob({ id: 'manual', title: e.target.value, company: '', location: '', description: '', url: '', posted_date: '', tags: [], job_type: '', is_remote: false, source: '' })} />
+                    <Input placeholder="Enter Job Title" value={selectedInterviewJob?.title || ''} onChange={(e) => setSelectedInterviewJob({ id: 'manual', title: e.target.value, company: '', location: '', description: '', url: '', posted_date: '', tags: [], job_type: '', is_remote: false, source: '' })} />
                   )}
                   <Button onClick={() => selectedInterviewJob && generateInterviewQuestions(selectedInterviewJob)} disabled={!selectedInterviewJob || generatingQuestions} className="w-full mt-4">
                     {generatingQuestions ? 'Generating...' : 'Generate Questions'}
@@ -574,16 +661,16 @@ export default function NextJobPlatform() {
                 </CardContent>
               </Card>
               <Card className="lg:col-span-2">
-                <CardHeader><CardTitle>Questions</CardTitle></CardHeader>
+                <CardHeader><CardTitle>Interview Questions</CardTitle></CardHeader>
                 <CardContent>
                   {interviewQuestions.length === 0 ? (
-                    <div className="text-center py-8"><HelpCircle className="w-12 h-12 text-gray-300 mx-auto mb-4" /><p className="text-gray-500">Generate questions to practice</p></div>
+                    <div className="text-center py-8"><HelpCircle className="w-12 h-12 text-gray-300 mx-auto mb-4" /><p className="text-gray-500">Select a job and generate questions</p></div>
                   ) : (
                     <div className="space-y-3">{interviewQuestions.map((q, i) => (
                       <div key={i} className="border rounded-lg">
                         <div onClick={() => setExpandedQuestion(expandedQuestion === i ? null : i)} className="p-4 cursor-pointer hover:bg-gray-50">
                           <p className="font-medium">{q.question}</p>
-                          <div className="flex gap-2 mt-2"><Badge>{q.category}</Badge><Badge>{q.difficulty}</Badge></div>
+                          <div className="flex gap-2 mt-2"><Badge>{q.category}</Badge><Badge variant="outline">{q.difficulty}</Badge></div>
                         </div>
                         {expandedQuestion === i && <div className="p-4 bg-gray-50 border-t"><p className="text-sm"><strong>Tips:</strong> {q.tips}</p></div>}
                       </div>
@@ -600,25 +687,13 @@ export default function NextJobPlatform() {
                 <CardHeader><CardTitle>Search Company</CardTitle></CardHeader>
                 <CardContent>
                   <div className="flex gap-2">
-                    {/* FIXED: Added controlled input and proper onClick handler */}
                     <Input 
                       placeholder="Company name..." 
                       value={companySearchInput}
                       onChange={(e) => setCompanySearchInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && companySearchInput.trim()) {
-                          fetchCompanyIntel(companySearchInput.trim())
-                        }
-                      }}
+                      onKeyDown={(e) => e.key === 'Enter' && companySearchInput.trim() && fetchCompanyIntel(companySearchInput.trim())}
                     />
-                    <Button 
-                      onClick={() => {
-                        if (companySearchInput.trim()) {
-                          fetchCompanyIntel(companySearchInput.trim())
-                        }
-                      }}
-                      disabled={!companySearchInput.trim() || loadingCompanyIntel}
-                    >
+                    <Button onClick={() => companySearchInput.trim() && fetchCompanyIntel(companySearchInput.trim())} disabled={!companySearchInput.trim() || loadingCompanyIntel}>
                       {loadingCompanyIntel ? <RefreshCw className="w-4 h-4 animate-spin" /> : 'Search'}
                     </Button>
                   </div>
@@ -640,7 +715,7 @@ export default function NextJobPlatform() {
                   <Card>
                     <CardHeader><CardTitle>Ratings</CardTitle></CardHeader>
                     <CardContent className="space-y-4">
-                      <div><div className="flex justify-between text-sm"><span>Work-Life</span><span>{companyIntel.avg_work_life_balance}/5</span></div><Progress value={companyIntel.avg_work_life_balance * 20} /></div>
+                      <div><div className="flex justify-between text-sm"><span>Work-Life Balance</span><span>{companyIntel.avg_work_life_balance}/5</span></div><Progress value={companyIntel.avg_work_life_balance * 20} /></div>
                       <div><div className="flex justify-between text-sm"><span>Compensation</span><span>{companyIntel.avg_compensation}/5</span></div><Progress value={companyIntel.avg_compensation * 20} /></div>
                     </CardContent>
                   </Card>
@@ -654,8 +729,8 @@ export default function NextJobPlatform() {
               )}
               <Card className="lg:col-span-2">
                 <CardHeader><CardTitle>Popular Companies</CardTitle></CardHeader>
-                <CardContent><div className="flex flex-wrap gap-2">{['Google', 'Microsoft', 'Apple', 'Amazon', 'Meta', 'Netflix'].map((c) => (
-                  <Button key={c} onClick={() => { setCompanySearchInput(c); fetchCompanyIntel(c); }}>{c}</Button>
+                <CardContent><div className="flex flex-wrap gap-2">{['Google', 'Microsoft', 'Apple', 'Amazon', 'Meta', 'Netflix', 'Stripe', 'Uber', 'Airbnb', 'Spotify'].map((c) => (
+                  <Button key={c} variant="outline" size="sm" onClick={() => { setCompanySearchInput(c); fetchCompanyIntel(c); }}>{c}</Button>
                 ))}</div></CardContent>
               </Card>
             </div>
@@ -666,7 +741,7 @@ export default function NextJobPlatform() {
               <Card>
                 <CardHeader><CardTitle>Create Alert</CardTitle></CardHeader>
                 <CardContent className="space-y-4">
-                  <div><Label>Query</Label><Input placeholder="React, TypeScript..." value={newAlert.search_query} onChange={(e) => setNewAlert({ ...newAlert, search_query: e.target.value })} /></div>
+                  <div><Label>Search Query</Label><Input placeholder="React, TypeScript..." value={newAlert.search_query} onChange={(e) => setNewAlert({ ...newAlert, search_query: e.target.value })} /></div>
                   <div><Label>Frequency</Label>
                     <Select value={newAlert.frequency} onValueChange={(v: string) => setNewAlert({ ...newAlert, frequency: v })}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
@@ -674,7 +749,7 @@ export default function NextJobPlatform() {
                     </Select>
                   </div>
                   <div className="flex items-center gap-2"><Switch checked={newAlert.remote_only} onCheckedChange={(v: boolean) => setNewAlert({ ...newAlert, remote_only: v })} /><Label>Remote Only</Label></div>
-                  <Button onClick={createJobAlert} disabled={!newAlert.search_query} className="w-full">Create</Button>
+                  <Button onClick={createJobAlert} disabled={!newAlert.search_query} className="w-full">Create Alert</Button>
                 </CardContent>
               </Card>
               <Card className="lg:col-span-2">
@@ -736,7 +811,7 @@ export default function NextJobPlatform() {
           <DialogHeader><DialogTitle>Sign In</DialogTitle><DialogDescription>Enter your email to continue</DialogDescription></DialogHeader>
           <div className="space-y-4">
             <div><Label>Email</Label><Input type="email" value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} /></div>
-            <div><Label>Name</Label><Input value={authName} onChange={(e) => setAuthName(e.target.value)} /></div>
+            <div><Label>Name (optional)</Label><Input value={authName} onChange={(e) => setAuthName(e.target.value)} /></div>
           </div>
           <DialogFooter><Button onClick={handleAuth}>Sign In</Button></DialogFooter>
         </DialogContent>
@@ -746,7 +821,7 @@ export default function NextJobPlatform() {
         <DialogContent>
           <DialogHeader><DialogTitle>Create Job Alert</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div><Label>Search Query</Label><Input value={newAlert.search_query} onChange={(e) => setNewAlert({ ...newAlert, search_query: e.target.value })} /></div>
+            <div><Label>Search Query</Label><Input value={newAlert.search_query} onChange={(e) => setNewAlert({ ...newAlert, search_query: e.target.value })} placeholder="e.g., React Developer" /></div>
             <div><Label>Frequency</Label>
               <Select value={newAlert.frequency} onValueChange={(v: string) => setNewAlert({ ...newAlert, frequency: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -758,7 +833,7 @@ export default function NextJobPlatform() {
         </DialogContent>
       </Dialog>
 
-      <footer className="border-t py-4 text-center text-sm text-gray-500">NextJob - AI-Powered Career Platform</footer>
+      <footer className="border-t py-4 text-center text-sm text-gray-500">NextJob - AI-Powered Career Platform with Real Company Career Pages</footer>
     </div>
   )
 }
