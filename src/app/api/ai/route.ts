@@ -1,29 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-// Try to initialize ZAI with environment variable
-async function initZAI() {
-  try {
-    const ZAI = (await import('z-ai-web-dev-sdk')).default
-    
-    // Check if API key is in environment
-    const apiKey = process.env.ZAI_API_KEY
-    
-    if (apiKey) {
-      console.log('✅ Found ZAI_API_KEY in environment')
-      const zai = await ZAI.create({ apiKey })
-      return zai
-    }
-    
-    // Try default config
-    console.log('Trying default ZAI config...')
-    const zai = await ZAI.create()
-    return zai
-  } catch (error: any) {
-    console.error('❌ ZAI init error:', error.message)
-    return null
-  }
-}
-
 function extractJsonFromResponse(content: string): any {
   if (!content) return null
   try { return JSON.parse(content) } catch {}
@@ -84,10 +60,8 @@ Sincerely,
 
 async function analyzeResume(resumeText: string): Promise<{ analysis: any; aiUsed: boolean; error?: string }> {
   try {
-    const zai = await initZAI()
-    if (!zai) {
-      return { analysis: getFallbackResumeAnalysis(), aiUsed: false, error: 'AI SDK not configured' }
-    }
+    const ZAI = (await import('z-ai-web-dev-sdk')).default
+    const zai = await ZAI.create()
     
     const prompt = `Analyze this resume:\n\n${resumeText}\n\nReturn JSON only:\n{"overall_score": 0-100, "strengths": [], "weaknesses": [], "improvements": [], "skills_detected": [], "experience_years": 0, "job_titles_fit": [], "keywords_missing": [], "ats_compatibility_score": 0-100}`
     
@@ -113,10 +87,8 @@ async function analyzeResume(resumeText: string): Promise<{ analysis: any; aiUse
 
 async function generateInterviewQuestions(job: any): Promise<{ questions: any[]; aiUsed: boolean; error?: string }> {
   try {
-    const zai = await initZAI()
-    if (!zai) {
-      return { questions: getFallbackInterviewQuestions(job), aiUsed: false, error: 'AI SDK not configured' }
-    }
+    const ZAI = (await import('z-ai-web-dev-sdk')).default
+    const zai = await ZAI.create()
     
     const prompt = `Generate 10 interview questions for:\nTitle: ${job.title}\nCompany: ${job.company}\nDescription: ${job.description}\n\nReturn JSON array: [{"question": "", "category": "behavioral|technical|situational", "difficulty": "easy|medium|hard", "tips": ""}]`
     
@@ -142,10 +114,8 @@ async function generateInterviewQuestions(job: any): Promise<{ questions: any[];
 
 async function generateCoverLetter(job: any, userProfile: string): Promise<{ coverLetter: string; aiUsed: boolean; error?: string }> {
   try {
-    const zai = await initZAI()
-    if (!zai) {
-      return { coverLetter: getFallbackCoverLetter(job, userProfile), aiUsed: false, error: 'AI SDK not configured' }
-    }
+    const ZAI = (await import('z-ai-web-dev-sdk')).default
+    const zai = await ZAI.create()
     
     const prompt = `Write a cover letter for:\nTitle: ${job.title}\nCompany: ${job.company}\nCandidate: ${userProfile}\n\n250 words.`
     
