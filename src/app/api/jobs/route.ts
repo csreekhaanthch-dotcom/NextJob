@@ -200,7 +200,7 @@ async function fetchRemoteOKJobs(search: string, limit: number) {
       description: stripHtml(job.description || ''),
       url: job.url || 'https://remoteok.com/remote-jobs/' + job.id,
       salary: job.salary || null,
-      posted_date: job.date ? new Date(job.date * 1000).toISOString() : null,
+      posted_date: job.date && !isNaN(job.date) ? new Date(job.date * 1000).toISOString() : new Date().toISOString(),
       tags: job.tags || [],
       job_type: job.type || 'Full-time',
       is_remote: true,
