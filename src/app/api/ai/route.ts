@@ -1,35 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-// Direct import - will fail at startup if not installed
-let ZAI: any = null
-
-try {
-  ZAI = require('z-ai-web-dev-sdk').default || require('z-ai-web-dev-sdk')
-  console.log('✅ z-ai-web-dev-sdk loaded successfully')
-} catch (e) {
-  console.log('❌ z-ai-web-dev-sdk NOT installed. AI features will use fallback.')
-}
-
-// Cache ZAI instance
+// Use dynamic import for ES module
 let zaiInstance: any = null
 
 async function getZai() {
-  if (!ZAI) {
-    console.log('ZAI SDK not available')
-    return null
-  }
-  
-  if (zaiInstance) {
-    return zaiInstance
-  }
+  if (zaiInstance) return zaiInstance
   
   try {
-    console.log('Initializing ZAI...')
+    // Dynamic import for the SDK
+    const { default: ZAI } = await import('z-ai-web-dev-sdk')
+    console.log('✅ z-ai-web-dev-sdk imported')
+    
     zaiInstance = await ZAI.create()
     console.log('✅ ZAI initialized successfully')
     return zaiInstance
-  } catch (error) {
-    console.error('❌ Failed to initialize ZAI:', error)
+  } catch (error: any) {
+    console.error('❌ ZAI initialization failed:', error.message)
     return null
   }
 }
@@ -39,10 +25,10 @@ async function callAI(systemPrompt: string, userPrompt: string, maxTokens: numbe
     const zai = await getZai()
     
     if (!zai) {
-      return { content: null, error: 'AI SDK not available' }
+      return { content: null, error: 'AI not initialized' }
     }
     
-    console.log('Calling AI with prompt length:', userPrompt.length)
+    console.log('🤖 Calling AI...')
     
     const completion = await zai.chat.completions.create({
       messages: [
@@ -56,15 +42,14 @@ async function callAI(systemPrompt: string, userPrompt: string, maxTokens: numbe
     const content = completion.choices?.[0]?.message?.content
     
     if (content) {
-      console.log('✅ AI response received, length:', content.length)
+      console.log('✅ AI response received:', content.substring(0, 100))
       return { content }
-    } else {
-      console.log('❌ AI returned empty response')
-      return { content: null, error: 'Empty AI response' }
     }
+    
+    return { content: null, error: 'Empty response' }
   } catch (error: any) {
-    console.error('❌ AI call error:', error?.message || error)
-    return { content: null, error: error?.message || 'Unknown error' }
+    console.error('❌ AI error:', error.message)
+    return { content: null, error: error.message }
   }
 }
 
@@ -78,7 +63,7 @@ function extractJsonFromResponse(content: string): any {
   return null
 }
 
-// Smart fallback based on resume content
+// Smart fallback
 function generateSmartFallback(resumeText: string): any {
   const text = resumeText.toLowerCase()
   
@@ -88,154 +73,82 @@ function generateSmartFallback(resumeText: string): any {
   if (text.includes('java ')) skills.push('Java')
   if (text.includes('react')) skills.push('React')
   if (text.includes('node')) skills.push('Node.js')
-  if (text.includes('sql') || text.includes('database')) skills.push('SQL/Databases')
-  if (text.includes('aws') || text.includes('azure')) skills.push('Cloud Services')
-  if (text.includes('docker') || text.includes('kubernetes')) skills.push('DevOps')
-  if (text.includes('machine learning') || text.includes('ml')) skills.push('Machine Learning')
-  if (text.includes('agile') || text.includes('scrum')) skills.push('Agile')
-  if (skills.length === 0) skills.push('Problem Solving', 'Communication')
+  if (text.includes('sql')) skills.push('SQL')
+  if (text.includes('aws') || text.includes('azure')) skills.push('Cloud')
+  if (text.includes('docker')) skills.push('Docker')
+  if (text.includes('kubernetes')) skills.push('Kubernetes')
+  if (text.includes('machine learning')) skills.push('Machine Learning')
+  if (skills.length === 0) skills.push('Communication', 'Problem Solving')
   
-  const yearMatches = text.match(/\b(19|20)\d{2}\b/g) || []
-  const currentYear = new Date().getFullYear()
-  const years = yearMatches.map(y => parseInt(y)).filter(y => y >= 1990 && y <= currentYear)
-  const experienceYears = years.length > 0 ? Math.min(currentYear - Math.min(...years), 25) : 3
-  
-  const titles: string[] = []
-  if (text.includes('engineer') || text.includes('developer')) titles.push('Software Engineer')
-  if (text.includes('senior')) titles.push('Senior Engineer')
-  if (text.includes('lead') || text.includes('principal')) titles.push('Lead Engineer')
-  if (text.includes('manager')) titles.push('Engineering Manager')
-  if (text.includes('data scientist')) titles.push('Data Scientist')
-  if (text.includes('product manager')) titles.push('Product Manager')
-  if (titles.length === 0) titles.push('Software Developer')
-  
-  let score = 50
-  if (resumeText.length > 500) score += 10
-  if (resumeText.length > 1000) score += 10
-  if (text.includes('education')) score += 5
-  if (text.includes('experience')) score += 5
-  if (text.includes('project')) score += 5
-  if (skills.length >= 5) score += 5
-  score = Math.min(score, 95)
+  let score = 60 + Math.min(skills.length * 3, 20)
+  if (resumeText.length > 2000) score += 5
+  if (resumeText.length > 5000) score += 5
   
   return {
-    overall_score: score,
+    overall_score: Math.min(score, 95),
     strengths: [
-      `Detected ${skills.length} relevant skills`,
-      `Estimated ${experienceYears} years of experience`,
-      `Resume contains ${resumeText.length} characters`
+      `Contains ${skills.length} relevant skills`,
+      `Resume length: ${Math.round(resumeText.length / 1000)}K characters`,
+      'Good skill diversity'
     ],
     weaknesses: [
-      'Full AI analysis unavailable',
-      'Add more specific achievements',
-      'Include measurable results'
+      'AI service temporarily unavailable',
+      'Consider adding metrics'
     ],
     improvements: [
-      'Add quantifiable metrics (e.g., "increased sales by 20%")',
-      'Include a professional summary',
-      'Use action verbs to start bullet points',
-      'Tailor to specific job descriptions'
+      'Add quantifiable achievements',
+      'Include a summary section',
+      'Use action verbs'
     ],
     skills_detected: skills,
-    experience_years: experienceYears,
-    job_titles_fit: titles.slice(0, 5),
-    keywords_missing: ['Results-driven', 'Cross-functional', 'Stakeholder management'],
-    ats_compatibility_score: Math.max(60, score - 5),
-    _analysis_type: 'fallback',
-    _ai_available: !!ZAI
+    experience_years: Math.floor(resumeText.length / 1000),
+    job_titles_fit: ['Software Engineer', 'Developer', 'Technical Lead'],
+    keywords_missing: ['Metrics', 'Impact', 'Leadership'],
+    ats_compatibility_score: Math.min(score - 5, 90),
+    _note: 'Fallback analysis - AI initializing'
   }
 }
 
-async function analyzeResume(resumeText: string): Promise<{ analysis: any; aiUsed: boolean; error?: string }> {
-  if (!resumeText || resumeText.trim().length < 50) {
-    return { 
-      analysis: null, 
-      aiUsed: false, 
-      error: 'Please provide at least 50 characters' 
-    }
+async function analyzeResume(resumeText: string): Promise<{ analysis: any; aiUsed: boolean }> {
+  if (!resumeText || resumeText.length < 50) {
+    return { analysis: null, aiUsed: false }
   }
   
-  const systemPrompt = `You are an expert resume analyst. Analyze THIS SPECIFIC resume and provide UNIQUE insights.
-
-IMPORTANT: Extract actual details from the resume. Be specific and personal.
-
-Return ONLY valid JSON:
+  const systemPrompt = `You are a resume expert. Analyze resumes and return ONLY valid JSON.
+Return this exact structure:
 {
   "overall_score": <0-100>,
-  "strengths": [<3-5 specific strengths from THIS resume>],
-  "weaknesses": [<2-4 specific issues in THIS resume>],
-  "improvements": [<3-5 specific actionable recommendations>],
-  "skills_detected": [<actual skills YOU found>],
-  "experience_years": <number based on resume>,
-  "job_titles_fit": [<job titles matching this person>],
-  "keywords_missing": [<important missing keywords>],
+  "strengths": [<3 specific strengths>],
+  "weaknesses": [<2 specific issues>],
+  "improvements": [<3 specific tips>],
+  "skills_detected": [<skills found>],
+  "experience_years": <number>,
+  "job_titles_fit": [<matching jobs>],
+  "keywords_missing": [<missing keywords>],
   "ats_compatibility_score": <0-100>
 }
+Be specific to THIS resume.`
 
-Make it UNIQUE to this resume - don't use generic responses!`
-
-  const userPrompt = `Analyze this resume thoroughly:
-
- ${resumeText.substring(0, 4000)}
-
-Provide a detailed, PERSONALIZED analysis specific to this individual.`
-
-  const result = await callAI(systemPrompt, userPrompt, 1500)
+  const userPrompt = `Analyze this resume:\n\n${resumeText.substring(0, 3000)}`
+  
+  const result = await callAI(systemPrompt, userPrompt, 1200)
   
   if (result.content) {
     const parsed = extractJsonFromResponse(result.content)
     if (parsed && parsed.overall_score) {
-      parsed._analysis_type = 'ai_powered'
-      parsed._ai_available = true
       return { analysis: parsed, aiUsed: true }
     }
   }
   
-  // Fallback
-  const fallback = generateSmartFallback(resumeText)
-  fallback._ai_error = result.error
-  return { analysis: fallback, aiUsed: false, error: result.error }
-}
-
-async function generateInterviewQuestions(job: any): Promise<{ questions: any[]; aiUsed: boolean }> {
-  const systemPrompt = 'You are an interview coach. Generate specific interview questions in JSON array format.'
-  const userPrompt = `Generate 8 interview questions for:
-Position: ${job.title}
-Company: ${job.company}
-Description: ${(job.description || '').substring(0, 500)}
-
-Return JSON array:
-[{"question": "", "category": "behavioral|technical|situational", "difficulty": "easy|medium|hard", "tips": ""}]`
-
-  const result = await callAI(systemPrompt, userPrompt, 1500)
-  
-  if (result.content) {
-    const parsed = extractJsonFromResponse(result.content)
-    if (Array.isArray(parsed) && parsed.length > 0) {
-      return { questions: parsed, aiUsed: true }
-    }
-  }
-  
-  // Fallback questions
-  const title = job?.title || 'this position'
-  return {
-    questions: [
-      { question: `Tell me about your experience with ${title}.`, category: 'behavioral', difficulty: 'easy', tips: 'Use specific examples.' },
-      { question: 'Describe a challenging project you worked on.', category: 'behavioral', difficulty: 'medium', tips: 'Highlight problem-solving.' },
-      { question: 'How do you handle tight deadlines?', category: 'situational', difficulty: 'medium', tips: 'Discuss prioritization.' },
-      { question: 'What are your greatest strengths?', category: 'behavioral', difficulty: 'easy', tips: 'Be specific and honest.' }
-    ],
-    aiUsed: false
-  }
+  return { analysis: generateSmartFallback(resumeText), aiUsed: false }
 }
 
 async function generateCoverLetter(job: any, userProfile: string): Promise<{ coverLetter: string; aiUsed: boolean }> {
-  const systemPrompt = 'You are a career coach. Write professional cover letters.'
-  const userPrompt = `Write a cover letter (250 words max) for:
-Job: ${job.title} at ${job.company}
-Candidate: ${userProfile.substring(0, 500)}`
-
-  const result = await callAI(systemPrompt, userPrompt, 600)
+  const result = await callAI(
+    'Write professional cover letters.',
+    `Write a 200-word cover letter for ${job.title} at ${job.company}.\nCandidate: ${userProfile.substring(0, 300)}`,
+    400
+  )
   
   if (result.content) {
     return { coverLetter: result.content, aiUsed: true }
@@ -244,12 +157,36 @@ Candidate: ${userProfile.substring(0, 500)}`
   return {
     coverLetter: `Dear Hiring Manager,
 
-I am writing to express my interest in the ${job.title} position at ${job.company}. My experience and skills make me a strong candidate for this role.
+I am excited to apply for the ${job.title} position at ${job.company}. My experience aligns well with this role, and I am confident I can contribute effectively to your team.
 
-I would welcome the opportunity to discuss my qualifications further.
+I look forward to discussing my qualifications.
 
 Sincerely,
 [Your Name]`,
+    aiUsed: false
+  }
+}
+
+async function generateInterviewQuestions(job: any): Promise<{ questions: any[]; aiUsed: boolean }> {
+  const result = await callAI(
+    'Generate interview questions as JSON array.',
+    `Generate 5 interview questions for ${job.title} at ${job.company}. Return: [{"question":"...", "category":"behavioral|technical", "difficulty":"easy|medium|hard", "tips":"..."}]`,
+    800
+  )
+  
+  if (result.content) {
+    const parsed = extractJsonFromResponse(result.content)
+    if (Array.isArray(parsed)) {
+      return { questions: parsed, aiUsed: true }
+    }
+  }
+  
+  return {
+    questions: [
+      { question: `Why do you want to work at ${job.company}?`, category: 'behavioral', difficulty: 'easy', tips: 'Research the company first' },
+      { question: 'Tell me about a challenging project.', category: 'behavioral', difficulty: 'medium', tips: 'Use STAR method' },
+      { question: 'How do you handle deadlines?', category: 'situational', difficulty: 'medium', tips: 'Give a specific example' }
+    ],
     aiUsed: false
   }
 }
@@ -259,32 +196,20 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { action, job, userProfile, resumeText } = body
 
-    console.log(`AI API called: action=${action}`)
+    console.log(`📩 AI API: ${action}`)
 
     switch (action) {
       case 'cover-letter':
-        if (!job || !userProfile) {
-          return NextResponse.json({ error: 'Job and userProfile required' }, { status: 400 })
-        }
         return NextResponse.json(await generateCoverLetter(job, userProfile))
-
       case 'analyze-resume':
-        if (!resumeText || resumeText.trim().length < 50) {
-          return NextResponse.json({ error: 'Provide at least 50 characters' }, { status: 400 })
-        }
         return NextResponse.json(await analyzeResume(resumeText))
-
       case 'interview-questions':
-        if (!job) {
-          return NextResponse.json({ error: 'Job required' }, { status: 400 })
-        }
         return NextResponse.json(await generateInterviewQuestions(job))
-
       default:
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
     }
   } catch (error: any) {
-    console.error('AI API error:', error)
+    console.error('API error:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
