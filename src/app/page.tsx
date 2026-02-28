@@ -193,7 +193,7 @@ function JobCardSkeleton() {
 
 // Theme Toggle Component
 function ThemeToggle() {
-  const { theme, setTheme, resolvedTheme } = useTheme()
+  const { setTheme, resolvedTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
   
   useEffect(() => {
@@ -204,12 +204,15 @@ function ThemeToggle() {
   
   if (!mounted) return null
   
+  const isDark = resolvedTheme === 'dark'
+  
   return (
     <Button
       variant="ghost"
       size="icon"
-      onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+      onClick={() => setTheme(isDark ? 'light' : 'dark')}
       className="relative"
+      title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
     >
       <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
       <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
@@ -457,9 +460,15 @@ export default function NextJobPlatform() {
     }
   }, [search, location, page, userProfile, showMatchScores, advancedFilters])
   
+    // Initial load and page change
   useEffect(() => {
     searchJobs()
   }, [page])
+  
+  // Initial mount - load jobs on first render
+  useEffect(() => {
+    searchJobs()
+  }, [])
   
   // Load saved jobs from localStorage
   useEffect(() => {
