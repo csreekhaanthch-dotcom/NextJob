@@ -4,7 +4,8 @@ import { NextRequest, NextResponse } from 'next/server'
 
 function stripHtml(html: string): string {
   if (!html) return ''
-  return html
+  
+  let text = html
     .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
     .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
     .replace(/<[^>]+>/g, ' ')
@@ -14,8 +15,16 @@ function stripHtml(html: string): string {
     .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&ensp;/g, ' ')
+    .replace(/&emsp;/g, ' ')
+    .replace(/\-\-[a-zA-Z0-9\-]+:\s*[^;]+;/g, '')
+    .replace(/[a-zA-Z\-]+\s*:\s*[^;]+;/g, '')
+    .replace(/\[&[^\]]+\]:[a-zA-Z0-9\-]+/g, '')
     .replace(/\s+/g, ' ')
     .trim()
+  
+  return text.length > 300 ? text.substring(0, 300) + '...' : text
 }
 
 // ============ FREE JOB APIs ============
@@ -49,7 +58,7 @@ async function fetchRemotiveJobs(search: string, location: string, limit: number
       title: job.title || 'Unknown Title',
       company: job.company_name || 'Unknown Company',
       location: job.candidate_required_location || 'Remote',
-      description: stripHtml(job.description?.substring(0, 500) || ''),
+      description: stripHtml(job.description || ''),
       url: job.url,
       salary: job.salary || null,
       posted_date: job.publication_date,
@@ -97,7 +106,7 @@ async function fetchArbeitnowJobs(search: string, location: string, limit: numbe
       title: job.title || 'Unknown Title',
       company: job.company_name || 'Unknown Company',
       location: job.location || 'Not specified',
-      description: stripHtml(job.description?.substring(0, 500) || ''),
+      description: stripHtml(job.description || ''),
       url: job.url || 'https://www.arbeitnow.com/job/' + job.slug,
       salary: job.salary || null,
       posted_date: job.created_at,
@@ -148,7 +157,7 @@ async function fetchMuseJobs(search: string, location: string, page: number, lim
       title: job.name || 'Unknown Title',
       company: job.company?.name || 'Unknown Company',
       location: job.locations?.map((l: any) => l.name).join(', ') || 'Not specified',
-      description: stripHtml(job.contents?.substring(0, 500) || ''),
+      description: stripHtml(job.contents || ''),
       url: job.refs?.landing_page,
       salary: null,
       posted_date: job.publication_date,
@@ -173,7 +182,7 @@ async function fetchRemoteOKJobs(search: string, limit: number) {
     if (!response.ok) return []
     
     const data = await response.json()
-    let jobs = data.slice(1) // First item is metadata
+    let jobs = data.slice(1)
     
     if (search) {
       const searchLower = search.toLowerCase()
@@ -188,7 +197,7 @@ async function fetchRemoteOKJobs(search: string, limit: number) {
       title: job.position || 'Unknown Title',
       company: job.company || 'Unknown Company',
       location: job.location || 'Remote',
-      description: stripHtml(job.description?.substring(0, 500) || ''),
+      description: stripHtml(job.description || ''),
       url: job.url || 'https://remoteok.com/remote-jobs/' + job.id,
       salary: job.salary || null,
       posted_date: job.date ? new Date(job.date * 1000).toISOString() : null,
@@ -203,18 +212,13 @@ async function fetchRemoteOKJobs(search: string, limit: number) {
   }
 }
 
-// ============ REAL COMPANY CAREER PAGE SCRAPERS ============
+// ============ CAREER PAGE APIS ============
 
-// Greenhouse API - Used by many tech companies
 const GREENHOUSE_COMPANIES: Record<string, string> = {
   'uber': 'uber', 'airbnb': 'airbnb', 'spotify': 'spotify', 'dropbox': 'dropbox',
   'stripe': 'stripe', 'coinbase': 'coinbase', 'lyft': 'lyft', 'shopify': 'shopify',
   'atlassian': 'atlassian', 'mongodb': 'mongodb', 'notion': 'notion', 'figma': 'figma',
-  'canva': 'canva', 'discord': 'discord', 'reddit': 'reddit', 'twilio': 'twilio',
-  'instacart': 'instacart', 'doordash': 'doordash', 'roblox': 'roblox', 'databricks': 'databricks',
-  'snowflake': 'snowflake', 'square': 'square', 'block': 'block', 'plaid': 'plaid',
-  'flexport': 'flexport', 'samsara': 'samsara', 'yelp': 'yelp', 'autodesk': 'autodesk',
-  'zapier': 'zapier', 'linear': 'linear', 'vercel': 'vercel', 'gitlab': 'gitlab'
+  'canva': 'canva', 'discord': 'discord', 'reddit': 'reddit', 'twilio': 'twilio'
 }
 
 async function fetchGreenhouseJobs(companyKey: string, search: string, limit: number): Promise<any[]> {
@@ -235,44 +239,34 @@ async function fetchGreenhouseJobs(companyKey: string, search: string, limit: nu
     if (search) {
       const searchLower = search.toLowerCase()
       jobs = jobs.filter((job: any) => 
-        job.title?.toLowerCase().includes(searchLower) ||
-        job.content?.toLowerCase().includes(searchLower)
+        job.title?.toLowerCase().includes(searchLower)
       )
     }
     
-    return jobs.slice(0, limit).map((job: any) => {
-      const locations = job.location?.name || 'Not specified'
-      const departments = job.departments?.map((d: any) => d.name).join(', ') || ''
-      
-      return {
-        id: `greenhouse-${companyKey}-${job.id}`,
-        title: job.title || 'Unknown Title',
-        company: companyKey.charAt(0).toUpperCase() + companyKey.slice(1),
-        location: locations,
-        description: stripHtml(job.content?.substring(0, 500) || ''),
-        url: job.absolute_url || `https://boards.greenhouse.io/${boardId}/jobs/${job.id}`,
-        salary: null,
-        posted_date: job.updated_at || new Date().toISOString(),
-        tags: departments ? [departments] : [],
-        job_type: 'Full-time',
-        is_remote: locations.toLowerCase().includes('remote'),
-        source: companyKey.charAt(0).toUpperCase() + companyKey.slice(1),
-        verified: true,
-        platform: 'Greenhouse'
-      }
-    })
+    return jobs.slice(0, limit).map((job: any) => ({
+      id: `greenhouse-${companyKey}-${job.id}`,
+      title: job.title || 'Unknown Title',
+      company: companyKey.charAt(0).toUpperCase() + companyKey.slice(1),
+      location: job.location?.name || 'Not specified',
+      description: stripHtml(job.content || ''),
+      url: job.absolute_url || `https://boards.greenhouse.io/${boardId}/jobs/${job.id}`,
+      salary: null,
+      posted_date: job.updated_at || new Date().toISOString(),
+      tags: job.departments?.map((d: any) => d.name) || [],
+      job_type: 'Full-time',
+      is_remote: (job.location?.name || '').toLowerCase().includes('remote'),
+      source: companyKey.charAt(0).toUpperCase() + companyKey.slice(1),
+      verified: true,
+      platform: 'Greenhouse'
+    }))
   } catch (error) {
-    console.error(`Greenhouse error for ${boardId}:`, error)
     return []
   }
 }
 
-// Lever API - Used by many startups
 const LEVER_COMPANIES: Record<string, string> = {
-  'palantir': 'palantir', 'anduril': 'anduril', 'scale': 'scale', 'openai': 'openai',
-  'anthropic': 'anthropic', 'huggingface': 'huggingface', 'mercury': 'mercury',
-  'retool': 'retool', 'vanta': 'vanta', 'deel': 'deel', 'descript': 'descript',
-  'lattice': 'lattice', 'waymo': 'waymo', 'nuro': 'nuro', 'cruise': 'cruise'
+  'openai': 'openai', 'anthropic': 'anthropic', 'mercury': 'mercury', 'retool': 'retool',
+  'vanta': 'vanta', 'deel': 'deel', 'descript': 'descript', 'lattice': 'lattice'
 }
 
 async function fetchLeverJobs(companyKey: string, search: string, limit: number): Promise<any[]> {
@@ -293,62 +287,46 @@ async function fetchLeverJobs(companyKey: string, search: string, limit: number)
     if (search) {
       const searchLower = search.toLowerCase()
       filteredJobs = jobs.filter((job: any) => 
-        job.text?.toLowerCase().includes(searchLower) ||
-        job.description?.toLowerCase().includes(searchLower)
+        job.text?.toLowerCase().includes(searchLower)
       )
     }
     
-    return filteredJobs.slice(0, limit).map((job: any) => {
-      const location = job.categories?.location || 'Not specified'
-      const team = job.categories?.team || ''
-      const commitment = job.categories?.commitment || 'Full-time'
-      
-      return {
-        id: `lever-${companyKey}-${job.id}`,
-        title: job.text || 'Unknown Title',
-        company: companyKey.charAt(0).toUpperCase() + companyKey.slice(1),
-        location: location,
-        description: stripHtml(job.descriptionPlain?.substring(0, 500) || ''),
-        url: job.hostedUrl || job.applyUrl,
-        salary: null,
-        posted_date: job.createdAt,
-        tags: team ? [team] : [],
-        job_type: commitment,
-        is_remote: location.toLowerCase().includes('remote'),
-        source: companyKey.charAt(0).toUpperCase() + companyKey.slice(1),
-        verified: true,
-        platform: 'Lever'
-      }
-    })
+    return filteredJobs.slice(0, limit).map((job: any) => ({
+      id: `lever-${companyKey}-${job.id}`,
+      title: job.text || 'Unknown Title',
+      company: companyKey.charAt(0).toUpperCase() + companyKey.slice(1),
+      location: job.categories?.location || 'Not specified',
+      description: stripHtml(job.descriptionPlain || ''),
+      url: job.hostedUrl || job.applyUrl,
+      salary: null,
+      posted_date: job.createdAt,
+      tags: job.categories?.team ? [job.categories.team] : [],
+      job_type: job.categories?.commitment || 'Full-time',
+      is_remote: (job.categories?.location || '').toLowerCase().includes('remote'),
+      source: companyKey.charAt(0).toUpperCase() + companyKey.slice(1),
+      verified: true,
+      platform: 'Lever'
+    }))
   } catch (error) {
-    console.error(`Lever error for ${siteId}:`, error)
     return []
   }
 }
 
-// Fetch jobs from all company career pages
 async function fetchAllCareerPagesJobs(search: string, location: string, limit: number): Promise<any[]> {
   const allJobs: any[] = []
-  
   const fetchPromises: Promise<any[]>[] = []
   
-  // Fetch from Greenhouse companies
   Object.keys(GREENHOUSE_COMPANIES).forEach(company => {
     fetchPromises.push(fetchGreenhouseJobs(company, search, Math.ceil(limit / 8)))
   })
   
-  // Fetch from Lever companies
   Object.keys(LEVER_COMPANIES).forEach(company => {
-    fetchPromises.push(fetchLeverJobs(company, search, Math.ceil(limit / 5)))
+    fetchPromises.push(fetchLeverJobs(company, search, Math.ceil(limit / 4)))
   })
   
   const results = await Promise.all(fetchPromises)
+  results.forEach(jobs => allJobs.push(...jobs))
   
-  results.forEach(jobs => {
-    allJobs.push(...jobs)
-  })
-  
-  // Filter by location if specified
   if (location) {
     const locLower = location.toLowerCase()
     return allJobs.filter(job => 
@@ -360,11 +338,10 @@ async function fetchAllCareerPagesJobs(search: string, location: string, limit: 
   return allJobs
 }
 
-// ============ MAIN API HANDLER ============
+// ============ API HANDLERS ============
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
-  
   const search = searchParams.get('search') || ''
   const location = searchParams.get('location') || ''
   const page = parseInt(searchParams.get('page') || '1')
@@ -377,20 +354,15 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    
-    const search = body.search || ''
-    const location = body.location || ''
-    const page = parseInt(body.page || '1')
-    const limit = parseInt(body.limit || '12')
-    const includeCareerPages = body.careerPages === 'true'
-    
-    return fetchJobsInternal({ search, location, page, limit, includeCareerPages })
+    return fetchJobsInternal({
+      search: body.search || '',
+      location: body.location || '',
+      page: parseInt(body.page || '1'),
+      limit: parseInt(body.limit || '12'),
+      includeCareerPages: body.careerPages === 'true'
+    })
   } catch (error: any) {
-    console.error('Jobs POST API error:', error)
-    return NextResponse.json(
-      { error: 'Failed to parse request', message: error.message },
-      { status: 400 }
-    )
+    return NextResponse.json({ error: 'Failed to parse request' }, { status: 400 })
   }
 }
 
@@ -404,8 +376,6 @@ async function fetchJobsInternal(params: {
   const { search, location, page, limit, includeCareerPages } = params
   
   try {
-    console.log(`Jobs API: search="${search}", location="${location}", careerPages=${includeCareerPages}`)
-    
     const fetchPromises: Promise<any[]>[] = [
       fetchRemotiveJobs(search, location, limit),
       fetchArbeitnowJobs(search, location, limit),
@@ -413,26 +383,19 @@ async function fetchJobsInternal(params: {
       fetchRemoteOKJobs(search, limit)
     ]
     
-    // Add career page scraping if enabled
     if (includeCareerPages) {
       fetchPromises.push(fetchAllCareerPagesJobs(search, location, limit * 2))
     }
     
     const results = await Promise.all(fetchPromises)
-    
-    // Combine all jobs
     let allJobs = results.flat()
     
-    console.log(`Total jobs fetched: ${allJobs.length}`)
-    
-    // Sort by posted_date (newest first)
     allJobs.sort((a, b) => {
       const dateA = a.posted_date ? new Date(a.posted_date).getTime() : 0
       const dateB = b.posted_date ? new Date(b.posted_date).getTime() : 0
       return dateB - dateA
     })
     
-    // Remove duplicates based on title + company
     const seen = new Set()
     allJobs = allJobs.filter(job => {
       const key = `${job.title}-${job.company}`.toLowerCase()
@@ -441,17 +404,8 @@ async function fetchJobsInternal(params: {
       return true
     })
     
-    // Apply pagination
     const total = allJobs.length
-    const startIndex = (page - 1) * limit
-    const paginatedJobs = allJobs.slice(startIndex, startIndex + limit)
-    
-    // Count jobs by platform
-    const platformCounts: Record<string, number> = {}
-    allJobs.forEach(job => {
-      const platform = job.platform || job.source
-      platformCounts[platform] = (platformCounts[platform] || 0) + 1
-    })
+    const paginatedJobs = allJobs.slice((page - 1) * limit, page * limit)
     
     return NextResponse.json({
       jobs: paginatedJobs,
@@ -459,20 +413,15 @@ async function fetchJobsInternal(params: {
       page,
       totalPages: Math.ceil(total / limit),
       sources: [
-        { name: 'Remotive', status: 'active', type: 'free' },
-        { name: 'Arbeitnow', status: 'active', type: 'free' },
-        { name: 'TheMuse', status: 'active', type: 'free' },
-        { name: 'RemoteOK', status: 'active', type: 'free' },
-        { name: 'Greenhouse', status: 'active', type: 'career-api', companies: Object.keys(GREENHOUSE_COMPANIES).length },
-        { name: 'Lever', status: 'active', type: 'career-api', companies: Object.keys(LEVER_COMPANIES).length }
-      ],
-      platformCounts
+        { name: 'Remotive', status: 'active' },
+        { name: 'Arbeitnow', status: 'active' },
+        { name: 'TheMuse', status: 'active' },
+        { name: 'RemoteOK', status: 'active' },
+        { name: 'Greenhouse', status: 'active' },
+        { name: 'Lever', status: 'active' }
+      ]
     })
   } catch (error: any) {
-    console.error('Jobs API error:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch jobs', message: error.message },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to fetch jobs' }, { status: 500 })
   }
 }
