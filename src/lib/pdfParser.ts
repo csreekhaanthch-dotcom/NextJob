@@ -1,8 +1,7 @@
 /**
- * PDF Parser Utility - Server-only module
- * Uses 'server-only' to ensure this runs only on the server
+ * PDF Parser Utility
+ * High-quality PDF text extraction for resume parsing
  */
-import 'server-only'
 
 export interface PDFExtractionResult {
   text: string
@@ -32,8 +31,9 @@ export async function extractPDFText(buffer: Buffer): Promise<PDFExtractionResul
   const warnings: string[] = []
   
   try {
-    // Dynamic import for pdf-parse (server-side only)
-    const pdfParse = (await import('pdf-parse')).default
+    // Use require for CommonJS compatibility with pdf-parse
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const pdfParse = require('pdf-parse')
     
     const data = await pdfParse(buffer)
     
