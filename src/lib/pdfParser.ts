@@ -1,10 +1,8 @@
 /**
- * PDF Parser Utility - OpenResume-Inspired Implementation
- * High-quality PDF text extraction for resume parsing
+ * PDF Parser Utility - Server-only module
+ * Uses 'server-only' to ensure this runs only on the server
  */
-
-// @ts-ignore - pdf-parse doesn't have types
-import pdfParse from 'pdf-parse'
+import 'server-only'
 
 export interface PDFExtractionResult {
   text: string
@@ -34,6 +32,9 @@ export async function extractPDFText(buffer: Buffer): Promise<PDFExtractionResul
   const warnings: string[] = []
   
   try {
+    // Dynamic import for pdf-parse (server-side only)
+    const pdfParse = (await import('pdf-parse')).default
+    
     const data = await pdfParse(buffer)
     
     const metadata = {
