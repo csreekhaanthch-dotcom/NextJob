@@ -14,7 +14,7 @@
     "db:deploy": "prisma migrate deploy"
   },
   "dependencies": {
-    "@types/node": "^22",
+    "@types/node": "^25",
     "@hookform/resolvers": "^5.1.1",
     "@prisma/client": "^6.11.1",
     "@radix-ui/react-alert-dialog": "^1.1.14",
