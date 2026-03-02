@@ -22,7 +22,7 @@ import {
   Search, MapPin, Briefcase, Building2, Star, TrendingUp, 
   Clock, Users, DollarSign, FileText, MessageSquare, 
   ChevronRight, ExternalLink, Bookmark, BookmarkCheck,
-  Sparkles, Brain, Target, Award, Zap, Upload, Download,
+  Sparkles, Brain, Target, Award, Zap, Download,
   Bell, BellRing, Mail, CheckCircle, XCircle, AlertTriangle,
   User, LogIn, LogOut, Settings, FileCheck, FileX,
   Lightbulb, HelpCircle, Send, RefreshCw, Play, Pause,
@@ -359,9 +359,7 @@ export default function NextJobPlatform() {
   const [resumeText, setResumeText] = useState('')
   const [resumeAnalysis, setResumeAnalysis] = useState<ResumeAnalysis | null>(null)
   const [analyzingResume, setAnalyzingResume] = useState(false)
-  const [uploadingPDF, setUploadingPDF] = useState(false)
-  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null)
-  const [pdfMode, setPdfMode] = useState<'upload' | 'paste'>('upload')
+
   
   // Interview Prep
   const [interviewQuestions, setInterviewQuestions] = useState<InterviewQuestion[]>([])
@@ -573,100 +571,17 @@ export default function NextJobPlatform() {
     }
   }
   
-  // Upload and parse PDF resume
-  const uploadPDFResume = async (file: File) => {
-    setUploadingPDF(true)
-    setResumeAnalysis(null)
-    
-    try {
-      const formData = new FormData()
-      formData.append('file', file)
-      
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData
-      })
-      
-      const data = await response.json()
-      
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to parse PDF')
-      }
-      
-      // Set the extracted text
-      setResumeText(data.text)
-      setUploadedFileName(file.name)
-      
-      // If we got parsed data, show immediate analysis
-      if (data.parsed) {
-        // Convert parsed data to ResumeAnalysis format
-        const quickAnalysis: ResumeAnalysis = {
-          overall_score: Math.round((data.parsed.atsScore + 50) / 2),
-          strengths: ['Resume successfully parsed'],
-          weaknesses: data.parsed.atsIssues || [],
-          improvements: data.parsed.atsSuggestions || [],
-          skills_detected: data.parsed.technicalSkills || [],
-          soft_skills: data.parsed.softSkills || [],
-          skills_by_category: data.parsed.skillsByCategory || {},
-          experience_years: data.parsed.experienceYears || 0,
-          experience_level: data.parsed.experienceLevel || 'mid',
-          job_titles_fit: data.parsed.recommendedJobTitles || [],
-          keywords_missing: [],
-          ats_compatibility_score: data.parsed.atsScore || 50,
-          contact_info: data.parsed.contactInfo || {},
-          sections_found: data.parsed.sections || [],
-          action_verbs_used: data.parsed.actionVerbsUsed || [],
-          has_quantifiable_results: data.parsed.hasQuantifiableResults || false,
-          certifications: data.parsed.certifications || [],
-          education: data.parsed.education || [],
-          word_count: data.parsed.wordCount || 0,
-          ai_powered: false
-        }
-        setResumeAnalysis(quickAnalysis)
-      }
-      
-      toast.success('PDF uploaded successfully!', {
-        description: `Extracted ${data.text?.length || 0} characters from ${data.pages || 1} page(s)`
-      })
-      
-      // Update user profile with resume
-      setUserProfile(data.text)
-      localStorage.setItem('userProfile', data.text)
-      
-    } catch (error: any) {
-      console.error('PDF upload failed:', error)
-      toast.error('Upload failed', {
-        description: error.message || 'Please try a different PDF file'
-      })
-    } finally {
-      setUploadingPDF(false)
-    }
-  }
   
-  // Handle file drop
-  const handleFileDrop = (e: React.DragEvent) => {
-    e.preventDefault()
-    const file = e.dataTransfer.files[0]
-    if (file && file.type === 'application/pdf') {
-      uploadPDFResume(file)
-    } else {
-      toast.error('Please upload a PDF file')
-    }
-  }
   
-  // Handle file input change
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      uploadPDFResume(file)
-    }
-  }
+
+  
+  
   
   // Analyze Resume (for both PDF-extracted text and pasted text)
   const analyzeResume = async () => {
     if (!resumeText.trim()) {
       toast.warning('Resume required', {
-        description: 'Please upload a PDF or paste your resume text'
+        description: 'Please paste your resume text'
       })
       return
     }
@@ -1474,136 +1389,30 @@ export default function NextJobPlatform() {
         </TabsContent>
 
         {/* Resume AI Tab */}
+
+        {/* Resume AI Tab */}
         <TabsContent value="resume" className="mt-0">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Input Section */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Upload className="w-5 h-5" />
+                  <FileText className="w-5 h-5" />
                   Resume Analyzer
                 </CardTitle>
                 <CardDescription>
-                  Upload PDF or paste your resume for AI-powered analysis
+                  Paste your resume for AI-powered analysis and ATS scoring
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {/* Mode Toggle */}
-                  <div className="flex gap-2 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg">
-                    <Button
-                      variant={pdfMode === 'upload' ? 'default' : 'ghost'}
-                      size="sm"
-                      className="flex-1"
-                      onClick={() => setPdfMode('upload')}
-                    >
-                      <Upload className="w-4 h-4 mr-2" />
-                      Upload PDF
-                    </Button>
-                    <Button
-                      variant={pdfMode === 'paste' ? 'default' : 'ghost'}
-                      size="sm"
-                      className="flex-1"
-                      onClick={() => setPdfMode('paste')}
-                    >
-                      <FileText className="w-4 h-4 mr-2" />
-                      Paste Text
-                    </Button>
-                  </div>
-
-                  {pdfMode === 'upload' ? (
-                    /* PDF Upload Zone */
-                    <div
-                      className={`relative border-2 border-dashed rounded-xl p-8 text-center transition-all ${
-                        uploadingPDF
-                          ? 'border-blue-400 bg-blue-50 dark:bg-blue-900/20'
-                          : 'border-gray-300 dark:border-gray-600 hover:border-blue-400 hover:bg-blue-50/50 dark:hover:bg-blue-900/10'
-                      }`}
-                      onDrop={handleFileDrop}
-                      onDragOver={(e) => e.preventDefault()}
-                      onDragEnter={(e) => e.preventDefault()}
-                    >
-                      <input
-                        type="file"
-                        accept=".pdf"
-                        onChange={handleFileChange}
-                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                        disabled={uploadingPDF}
-                      />
-                      
-                      {uploadingPDF ? (
-                        <div className="space-y-3">
-                          <div className="w-12 h-12 mx-auto border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
-                          <p className="text-sm font-medium text-blue-600 dark:text-blue-400">
-                            Parsing PDF...
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            Extracting text and analyzing structure
-                          </p>
-                        </div>
-                      ) : uploadedFileName ? (
-                        <div className="space-y-3">
-                          <div className="w-12 h-12 mx-auto bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
-                            <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400" />
-                          </div>
-                          <p className="text-sm font-medium text-green-600 dark:text-green-400">
-                            {uploadedFileName}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            Click or drag to replace
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="space-y-3">
-                          <div className="w-12 h-12 mx-auto bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
-                            <Upload className="w-6 h-6 text-gray-400" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                              Drop your resume PDF here
-                            </p>
-                            <p className="text-xs text-gray-500 mt-1">
-                              or click to browse (max 10MB)
-                            </p>
-                          </div>
-                          <div className="flex items-center justify-center gap-2 text-xs text-gray-400">
-                            <FileCheck className="w-3 h-3" />
-                            <span>Supports text-based PDFs</span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    /* Text Paste Area */
-                    <Textarea
-                      placeholder="Paste your resume text here..."
-                      value={resumeText}
-                      onChange={(e) => setResumeText(e.target.value)}
-                      className="min-h-[300px] font-mono text-sm"
-                    />
-                  )}
-
-                  {/* Extracted Text Preview (when PDF is uploaded) */}
-                  {pdfMode === 'upload' && resumeText && (
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Label className="text-xs text-gray-500">Extracted Text Preview</Label>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 text-xs"
-                          onClick={() => setPdfMode('paste')}
-                        >
-                          Edit text
-                        </Button>
-                      </div>
-                      <div className="max-h-40 overflow-y-auto p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                        <p className="text-xs font-mono text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
-                          {resumeText.slice(0, 500)}{resumeText.length > 500 ? '...' : ''}
-                        </p>
-                      </div>
-                    </div>
-                  )}
+                  {/* Text Paste Area */}
+                  <Textarea
+                    placeholder="Paste your resume text here..."
+                    value={resumeText}
+                    onChange={(e) => setResumeText(e.target.value)}
+                    className="min-h-[350px] font-mono text-sm"
+                  />
 
                   <div className="flex items-center gap-2">
                     <Button 
@@ -1628,7 +1437,6 @@ export default function NextJobPlatform() {
                       onClick={() => { 
                         setResumeText(''); 
                         setResumeAnalysis(null);
-                        setUploadedFileName(null);
                       }}
                     >
                       Clear
@@ -1637,7 +1445,7 @@ export default function NextJobPlatform() {
                   
                   <div className="flex items-center gap-2 text-xs text-gray-500">
                     <Zap className="w-3 h-3" />
-                    <span>OpenResume-style PDF parsing + AI analysis</span>
+                    <span>AI-powered analysis with ATS scoring</span>
                   </div>
                 </div>
               </CardContent>
