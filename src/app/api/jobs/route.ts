@@ -1,4 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { 
+  scrapeCompanyJobs, 
+  scrapeMultipleCompanies, 
+  getCompanyConfig,
+  COMPANY_ATS_CONFIGS,
+  ATS_STATS,
+  type CompanyATSConfig,
+  type ScrapedJob
+} from '@/lib/careerScraper'
 
 // ============ UTILITY FUNCTIONS ============
 
@@ -318,20 +327,41 @@ export async function GET(request: NextRequest) {
       fetchTechJobBoards(search, location, limit)
     ]
     
+    // Career page scraping for specific companies
     if (company) {
-      fetchPromises.push(Promise.resolve(generateCompanyJobs(company, search, location, limit)))
+      const config = getCompanyConfig(company)
+      if (config) {
+        fetchPromises.push(scrapeCompanyJobs(config, search, location, limit))
+      } else {
+        // Fallback to mock data if company not in our ATS database
+        fetchPromises.push(Promise.resolve(generateCompanyJobs(company, search, location, limit)))
+      }
     }
     
+    // Multiple company scraping
     if (companies.length > 0) {
-      companies.forEach(c => {
-        fetchPromises.push(Promise.resolve(generateCompanyJobs(c.trim(), search, location, Math.ceil(limit / companies.length))))
-      })
+      const configs = companies
+        .map(c => getCompanyConfig(c.trim()))
+        .filter((c): c is CompanyATSConfig => c !== undefined)
+      
+      if (configs.length > 0) {
+        fetchPromises.push(scrapeMultipleCompanies(configs, search, location, Math.ceil(limit / companies.length)))
+      }
     }
     
+    // Big tech scraping - use real ATS scraping
     if (includeBigTech) {
-      BIG_TECH_COMPANIES.slice(0, 15).forEach(c => {
-        fetchPromises.push(Promise.resolve(generateCompanyJobs(c, search, location, 2)))
-      })
+      // Get top companies from our ATS database
+      const topCompanies = COMPANY_ATS_CONFIGS.slice(0, 20)
+      fetchPromises.push(scrapeMultipleCompanies(topCompanies, search, location, 3))
+    }
+    
+    // Career pages parameter - scrape from all configured companies
+    const careerPages = searchParams.get('careerPages') === 'true'
+    if (careerPages && !includeBigTech) {
+      // Scrape from all companies in our database
+      const allCompanies = COMPANY_ATS_CONFIGS
+      fetchPromises.push(scrapeMultipleCompanies(allCompanies, search, location, 2))
     }
     
     const results = await Promise.all(fetchPromises)
@@ -355,18 +385,27 @@ export async function GET(request: NextRequest) {
     const startIndex = (page - 1) * limit
     const paginatedJobs = allJobs.slice(startIndex, startIndex + limit)
     
+    // Collect ATS sources that were used
+    const atsSources = [
+      { name: 'Remotive', status: 'active', jobsFound: 0 },
+      { name: 'Arbeitnow', status: 'active', jobsFound: 0 },
+      { name: 'TheMuse', status: 'active', jobsFound: 0 },
+      { name: 'RemoteOK', status: 'active', jobsFound: 0 },
+      { name: 'Greenhouse', status: 'active', companies: ATS_STATS.greenhouse },
+      { name: 'Lever', status: 'active', companies: ATS_STATS.lever },
+      { name: 'Ashby', status: 'active', companies: ATS_STATS.ashby },
+      { name: 'SmartRecruiters', status: 'active', companies: ATS_STATS.smartrecruiters }
+    ]
+    
     return NextResponse.json({
       jobs: paginatedJobs,
       total,
       page,
       totalPages: Math.ceil(total / limit),
-      sources: [
-        { name: 'Remotive', status: 'active' },
-        { name: 'Arbeitnow', status: 'active' },
-        { name: 'TheMuse', status: 'active' },
-        { name: 'RemoteOK', status: 'active' }
-      ],
-      companies: companies.length > 0 ? companies : (includeBigTech ? BIG_TECH_COMPANIES.slice(0, 20) : [])
+      sources: atsSources,
+      companies: companies.length > 0 ? companies : (includeBigTech || careerPages ? COMPANY_ATS_CONFIGS.slice(0, 20).map(c => c.name) : []),
+      atsStats: ATS_STATS,
+      totalCompanies: COMPANY_ATS_CONFIGS.length
     })
   } catch (error: any) {
     console.error('Jobs API error:', error)
