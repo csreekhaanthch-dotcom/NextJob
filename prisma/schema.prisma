@@ -1,0 +1,234 @@
+// This is your Prisma schema file
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// User & Authentication
+// ============================================
+
+model Profile {
+  id                    String   @id @default(cuid())
+  user_id               String   @unique
+  email                 String   @unique
+  full_name             String?
+  avatar_url            String?
+  resume_text           String?  @db.Text
+  skills                String[]
+  experience_years      Int      @default(0)
+  preferred_locations   String[]
+  preferred_job_types   String[]
+  salary_expectation_min Float?
+  salary_expectation_max Float?
+  
+  applications          Application[]
+  reviews               CompanyReview[]
+  interview_questions   InterviewQuestion[]
+  salary_submissions    SalaryData[]
+  job_alerts            JobAlert[]
+  
+  created_at            DateTime @default(now())
+  updated_at            DateTime @updatedAt
+
+  @@index([email])
+  @@index([skills])
+}
+
+// ============================================
+// Jobs
+// ============================================
+
+model Job {
+  id                    String   @id @default(cuid())
+  external_id           String   @unique
+  title                 String
+  company               String
+  company_logo          String?
+  location              String
+  description           String   @db.Text
+  requirements          String[]
+  salary_min            Float?
+  salary_max            Float?
+  salary_currency       String   @default("USD")
+  job_type              String   @default("full-time")
+  is_remote             Boolean  @default(false)
+  url                   String
+  source                String
+  tags                  String[]
+  posted_date           DateTime?
+  
+  applications          Application[]
+  
+  created_at            DateTime @default(now())
+  
+  @@index([company])
+  @@index([location])
+  @@index([job_type])
+  @@index([source])
+}
+
+// ============================================
+// Company Intel Hub
+// ============================================
+
+model CompanyReview {
+  id                    String   @id @default(cuid())
+  company_name          String
+  rating                Int
+  job_title             String
+  employment_status     String
+  pros                  String   @db.Text
+  cons                  String   @db.Text
+  work_life_balance     Int
+  compensation          Int
+  management            Int
+  culture               Int
+  career_growth         Int
+  is_anonymous          Boolean  @default(true)
+  
+  user_id               String?
+  user                  Profile? @relation(fields: [user_id], references: [id])
+  
+  created_at            DateTime @default(now())
+
+  @@index([company_name])
+  @@index([rating])
+}
+
+model InterviewQuestion {
+  id                    String   @id @default(cuid())
+  company_name          String
+  job_title             String
+  question              String   @db.Text
+  answer                String?  @db.Text
+  difficulty            String   @default("medium")
+  category              String   @default("technical")
+  is_anonymous          Boolean  @default(true)
+  upvotes               Int      @default(0)
+  
+  user_id               String?
+  user                  Profile? @relation(fields: [user_id], references: [id])
+  
+  created_at            DateTime @default(now())
+
+  @@index([company_name])
+  @@index([category])
+}
+
+model SalaryData {
+  id                    String   @id @default(cuid())
+  company_name          String
+  job_title             String
+  location              String
+  salary_min            Float
+  salary_max            Float
+  salary_currency       String   @default("USD")
+  total_compensation    Float?
+  years_experience      Int
+  is_anonymous          Boolean  @default(true)
+  
+  user_id               String?
+  user                  Profile? @relation(fields: [user_id], references: [id])
+  
+  created_at            DateTime @default(now())
+
+  @@index([company_name])
+  @@index([job_title])
+}
+
+// ============================================
+// Application Tracker
+// ============================================
+
+model Application {
+  id                    String   @id @default(cuid())
+  status                String   @default("saved")
+  cover_letter          String?  @db.Text
+  notes                 String   @db.Text
+  applied_date          DateTime?
+  response_date         DateTime?
+  interview_dates       DateTime[]
+  
+  user_id               String
+  user                  Profile  @relation(fields: [user_id], references: [id])
+  job_id                String
+  job                   Job      @relation(fields: [job_id], references: [id])
+  
+  created_at            DateTime @default(now())
+  updated_at            DateTime @updatedAt
+
+  @@unique([user_id, job_id])
+  @@index([status])
+}
+
+// ============================================
+// Job Alerts
+// ============================================
+
+model JobAlert {
+  id                    String   @id @default(cuid())
+  user_id               String
+  name                  String
+  search_query          String
+  location              String?
+  job_type              String?
+  min_salary            Float?
+  remote_only           Boolean  @default(false)
+  frequency             String   @default("daily")
+  is_active             Boolean  @default(true)
+  last_sent             DateTime?
+  jobs_sent_count       Int      @default(0)
+  
+  user                  Profile  @relation(fields: [user_id], references: [id])
+  
+  created_at            DateTime @default(now())
+  updated_at            DateTime @updatedAt
+
+  @@index([user_id])
+  @@index([search_query])
+}
+
+// ============================================
+// NextAuth Models
+// ============================================
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String  @id @default(cuid())
+  sessionToken String  @unique
+  userId       String
+  expires      DateTime
+  
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
