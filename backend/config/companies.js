@@ -9,23 +9,30 @@ module.exports = {
     // Priority 1 - Major tech companies
     { name: 'Stripe', board: 'stripe', enabled: true, priority: 1 },
     { name: 'Airbnb', board: 'airbnb', enabled: true, priority: 1 },
-    { name: 'Uber', board: 'uber', enabled: true, priority: 1 },
+    // Note: Uber uses a different board name - may need custom handling
+    { name: 'Uber', board: 'uber', enabled: false, priority: 1, note: 'Board not accessible' },
     { name: 'Dropbox', board: 'dropbox', enabled: true, priority: 1 },
     { name: 'Lyft', board: 'lyft', enabled: true, priority: 1 },
-    { name: 'Square', board: 'square', enabled: true, priority: 1 },
+    // Note: Square is now Block - board may have changed
+    { name: 'Square', board: 'square', enabled: false, priority: 1, note: 'Now Block - board changed' },
     { name: 'Twilio', board: 'twilio', enabled: true, priority: 1 },
     { name: 'Coinbase', board: 'coinbase', enabled: true, priority: 1 },
     { name: 'Robinhood', board: 'robinhood', enabled: true, priority: 1 },
     { name: 'Figma', board: 'figma', enabled: true, priority: 1 },
-    { name: 'Notion', board: 'notion', enabled: true, priority: 1 },
+    // Note: Notion board may have changed
+    { name: 'Notion', board: 'notion', enabled: false, priority: 1, note: 'Board not accessible' },
     { name: 'Discord', board: 'discord', enabled: true, priority: 1 },
     { name: 'Reddit', board: 'reddit', enabled: true, priority: 1 },
     { name: 'Pinterest', board: 'pinterest', enabled: true, priority: 1 },
-    { name: 'Snap', board: 'snap', enabled: true, priority: 1 },
+    // Note: Snap board may have changed
+    { name: 'Snap', board: 'snap', enabled: false, priority: 1, note: 'Board not accessible' },
     { name: 'Instacart', board: 'instacart', enabled: true, priority: 1 },
-    { name: 'DoorDash', board: 'doordash', enabled: true, priority: 1 },
-    { name: 'Plaid', board: 'plaid', enabled: true, priority: 1 },
-    { name: 'Snowflake', board: 'snowflake', enabled: true, priority: 1 },
+    // Note: DoorDash board may have changed
+    { name: 'DoorDash', board: 'doordash', enabled: false, priority: 1, note: 'Board not accessible' },
+    // Note: Plaid board may have changed
+    { name: 'Plaid', board: 'plaid', enabled: false, priority: 1, note: 'Board not accessible' },
+    // Note: Snowflake board may have changed
+    { name: 'Snowflake', board: 'snowflake', enabled: false, priority: 1, note: 'Board not accessible' },
     { name: 'Databricks', board: 'databricks', enabled: true, priority: 1 },
     { name: 'CrowdStrike', board: 'crowdstrike', enabled: true, priority: 1 },
     { name: 'HashiCorp', board: 'hashicorp', enabled: true, priority: 1 },

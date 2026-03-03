@@ -29,3 +29,10 @@ prisma/*.db
 # Cache
 .cache/
 .next/
+
+# Backend database files
+backend/data/
+backend/*.db
+*.db
+*.db-shm
+*.db-wal
