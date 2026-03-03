@@ -14,46 +14,18 @@ CREATE TABLE IF NOT EXISTS jobs (
   posted_at TEXT,
   source TEXT NOT NULL,
   is_remote INTEGER DEFAULT 0,
-  tags TEXT, -- JSON array of tags
+  tags TEXT,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-  expires_at TEXT -- When this cached job should be refreshed
+  expires_at TEXT
 );
 
--- Create indexes for common queries
 CREATE INDEX IF NOT EXISTS idx_jobs_company ON jobs(company);
 CREATE INDEX IF NOT EXISTS idx_jobs_source ON jobs(source);
 CREATE INDEX IF NOT EXISTS idx_jobs_location ON jobs(location);
 CREATE INDEX IF NOT EXISTS idx_jobs_is_remote ON jobs(is_remote);
 CREATE INDEX IF NOT EXISTS idx_jobs_posted_at ON jobs(posted_at);
 CREATE INDEX IF NOT EXISTS idx_jobs_expires_at ON jobs(expires_at);
-
--- Full-text search index for job content
-CREATE VIRTUAL TABLE IF NOT EXISTS jobs_fts USING fts5(
-  title,
-  company,
-  description,
-  content='jobs',
-  content_rowid='rowid'
-);
-
--- Triggers to keep FTS index in sync
-CREATE TRIGGER IF NOT EXISTS jobs_ai AFTER INSERT ON jobs BEGIN
-  INSERT INTO jobs_fts(rowid, title, company, description)
-  VALUES (new.rowid, new.title, new.company, new.description);
-END;
-
-CREATE TRIGGER IF NOT EXISTS jobs_ad AFTER DELETE ON jobs BEGIN
-  INSERT INTO jobs_fts(jobs_fts, rowid, title, company, description)
-  VALUES ('delete', old.rowid, old.title, old.company, old.description);
-END;
-
-CREATE TRIGGER IF NOT EXISTS jobs_au AFTER UPDATE ON jobs BEGIN
-  INSERT INTO jobs_fts(jobs_fts, rowid, title, company, description)
-  VALUES ('delete', old.rowid, old.title, old.company, old.description);
-  INSERT INTO jobs_fts(rowid, title, company, description)
-  VALUES (new.rowid, new.title, new.company, new.description);
-END;
 
 -- Scraping stats table - tracks scraping runs
 CREATE TABLE IF NOT EXISTS scraping_stats (
@@ -89,7 +61,7 @@ CREATE TABLE IF NOT EXISTS job_applications (
   id TEXT PRIMARY KEY,
   job_id TEXT NOT NULL,
   user_id TEXT,
-  status TEXT DEFAULT 'applied', -- applied, interviewing, offer, rejected, withdrawn
+  status TEXT DEFAULT 'applied',
   applied_at TEXT DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
   notes TEXT,
@@ -109,7 +81,7 @@ CREATE TABLE IF NOT EXISTS job_alerts (
   job_type TEXT,
   min_salary INTEGER,
   remote_only INTEGER DEFAULT 0,
-  frequency TEXT DEFAULT 'daily', -- daily, weekly
+  frequency TEXT DEFAULT 'daily',
   is_active INTEGER DEFAULT 1,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP,
   last_sent TEXT,
